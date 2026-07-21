@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEXAD診断 × タイピングゲーム</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== THEME VARIABLES ===== */
+    :root {
+      --p: #4f46e5; --p2: #818cf8; --a: #ec4899;
+      --bg: #f8fafc; --bg2: #f1f5f9;
+      --card: #ffffff; --bd: #e2e8f0;
+      --tx: #1e293b; --tx2: #64748b;
+      --ok: #059669; --ng: #ef4444;
+      --fn: 'Outfit',sans-serif; --fm: 'JetBrains Mono',monospace;
+    }
+    body.th-achiever  { --p:#2563eb; --p2:#60a5fa; --a:#6366f1; }
+    body.th-player    { --p:#d97706; --p2:#f59e0b; --a:#ef4444; }
+    body.th-freespirit{ --p:#7c3aed; --p2:#a78bfa; --a:#10b981; }
+    body.th-disruptor { --p:#059669; --p2:#10b981; --a:#6366f1; }
+
+    /* ===== RESET ===== */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;overflow:hidden}
+    body{font-family:var(--fn);background:var(--bg);color:var(--tx);transition:background .6s,color .6s}
+    button{cursor:pointer;font-family:var(--fn)}
+
+    /* ===== BG CANVAS (subtle dots) ===== */
+    #bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4}
+
+    /* ===== SCREENS ===== */
+    .scr{
+      position:fixed;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;z-index:10;padding:20px;
+      opacity:0;pointer-events:none;transform:translateY(20px);
+      transition:opacity .4s ease,transform .4s ease;
+    }
+    .scr.on{opacity:1;pointer-events:all;transform:translateY(0)}
+
+    /* ===== CARD ===== */
+    .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+
+    /* ===== BUTTONS ===== */
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:50px;border:none;font-size:15px;font-weight:600;transition:all .2s}
+    .btn-p{background:var(--p);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+    .btn-p:hover{background:color-mix(in srgb,var(--p) 85%,#000);transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.2)}
+    .btn-g{background:#fff;border:1.5px solid var(--bd);color:var(--tx2)}
+    .btn-g:hover{border-color:var(--p);color:var(--p)}
+
+    /* ===== WELCOME ===== */
+    #sw{gap:28px;background:var(--bg)}
+    .logo{display:flex;flex-direction:column;align-items:center;gap:10px}
+    .logo-icon{width:80px;height:80px;background:linear-gradient(135deg,var(--p),var(--a));border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 8px 24px rgba(79,70,229,.25);animation:fl 3s ease-in-out infinite}
+    @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    .logo h1{font-size:42px;font-weight:900;color:var(--p);letter-spacing:-1px}
+    .logo>p{font-size:13px;color:var(--tx2);letter-spacing:.08em}
+    .desc{max-width:480px;text-align:center}
+    .desc h2{font-size:20px;font-weight:700;margin-bottom:8px;color:var(--tx)}
+    .desc p{color:var(--tx2);line-height:1.7;font-size:14px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    .chip{padding:6px 16px;border-radius:50px;font-size:12px;font-weight:600;border:1.5px solid var(--bd);color:var(--tx2);background:#fff}
+    .chip.c0{border-color:#bfdbfe;color:#2563eb;background:#eff6ff}
+    .chip.c1{border-color:#fde68a;color:#d97706;background:#fffbeb}
+    .chip.c2{border-color:#ddd6fe;color:#7c3aed;background:#f5f3ff}
+    .chip.c3{border-color:#a7f3d0;color:#059669;background:#ecfdf5}
+
+    /* ===== CHAT ===== */
+    #sc{justify-content:flex-start;padding:0;align-items:stretch;background:var(--bg)}
+    .chat-head{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--bd);flex-shrink:0;background:#fff}
+    .c-av{width:40px;height:40px;background:linear-gradient(135deg,var(--p),var(--a));border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .chat-head h3{font-size:15px;font-weight:700;color:var(--tx)}
+    .chat-head span{font-size:12px;color:var(--ok)}
+    .chat-prog{margin-left:auto;font-size:12px;color:var(--tx2);background:var(--bg2);padding:4px 12px;border-radius:50px;border:1px solid var(--bd)}
+    .msgs{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;max-width:680px;width:100%;align-self:center}
+    .msgs::-webkit-scrollbar{width:4px}
+    .msgs::-webkit-scrollbar-thumb{background:var(--bd);border-radius:4px}
+    .msg{display:flex;gap:10px;max-width:88%;animation:mi .3s ease both}
+    @keyframes mi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .msg.ai{align-self:flex-start}
+    .msg.user{align-self:flex-end;flex-direction:row-reverse}
+    .m-av{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:3px}
+    .msg.ai .m-av{background:linear-gradient(135deg,var(--p),var(--a))}
+    .msg.user .m-av{background:var(--bg2);border:1px solid var(--bd)}
+    .bubble{padding:11px 15px;border-radius:16px;font-size:14px;line-height:1.65}
+    .msg.ai .bubble{background:#fff;border:1px solid var(--bd);border-top-left-radius:3px;color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .msg.user .bubble{background:var(--p);border-top-right-radius:3px;color:#fff}
+    .typing{display:flex;gap:4px;align-items:center;padding:11px 15px}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--tx2);animation:tb 1.2s infinite ease}
+    .dot:nth-child(2){animation-delay:.2s}
+    .dot:nth-child(3){animation-delay:.4s}
+    @keyframes tb{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+    
+    .choice-btns{display:flex;flex-direction:column;gap:8px;padding:0 20px 10px 20px;max-width:680px;width:100%;align-self:center}
+    .c-choice{padding:10px 18px;border-radius:12px;background:#fff;border:1.5px solid var(--bd);color:var(--tx);font-size:13px;font-weight:600;text-align:left;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+    .c-choice:hover{border-color:var(--p);color:var(--p);background:var(--bg2);transform:translateX(4px)}
+
+    .input-area{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--bd);max-width:680px;width:100%;align-self:center;background:#fff}
+    .c-inp{flex:1;background:#fff;border:1.5px solid var(--bd);border-radius:50px;padding:11px 18px;font-size:14px;font-family:var(--fn);color:var(--tx);outline:none;transition:border-color .2s}
+    .c-inp:focus{border-color:var(--p)}
+    .c-inp::placeholder{color:var(--tx2)}
+    .send{width:44px;height:44px;border-radius:50%;border:none;background:var(--p);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+    .send:hover{transform:scale(1.08);background:color-mix(in srgb,var(--p) 85%,#000)}
+    .send:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+    /* ===== RESULT ===== */
+    #sr{gap:20px;background:var(--bg)}
+    .r-head{text-align:center}
+    .r-head p{font-size:12px;color:var(--tx2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+    .r-type{font-size:50px;font-weight:900;color:var(--p);letter-spacing:-1px}
+    .r-sub{font-size:14px;color:var(--tx2);margin-top:4px}
+    .r-body{display:flex;gap:20px;align-items:flex-start;max-width:700px;width:100%}
+    .r-chart{padding:20px;flex-shrink:0}
+    .r-right{flex:1;display:flex;flex-direction:column;gap:14px}
+    .r-desc{padding:18px;font-size:14px;line-height:1.7;color:var(--tx2)}
+    .r-scores{padding:18px;display:flex;flex-direction:column;gap:9px}
+    .s-row{display:flex;align-items:center;gap:10px}
+    .s-lbl{font-size:12px;font-weight:600;min-width:100px;color:var(--tx2)}
+    .s-bg{flex:1;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden}
+    .s-fill{height:100%;border-radius:3px;background:var(--p);transition:width 1s ease}
+    .s-val{font-size:12px;font-weight:700;min-width:28px;text-align:right;color:var(--p)}
+
+    /* ===== GAME ===== */
+    #sg{justify-content:flex-start;align-items:stretch;padding:0;background:var(--bg)}
+    .g-head{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--bd);flex-shrink:0;background:#fff}
+    .g-stats{display:flex;gap:28px}
+    .g-stat{text-align:center}
+    .g-val{font-size:30px;font-weight:900;font-family:var(--fm);color:var(--p);line-height:1}
+    .g-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2);margin-top:3px}
+    .g-timer{font-size:48px;font-weight:900;font-family:var(--fm);color:var(--tx);transition:color .3s;min-width:68px;text-align:center}
+    .g-timer.warn{color:#d97706}
+    .g-timer.dng{color:var(--ng);animation:tp .5s infinite}
+    @keyframes tp{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    .g-badge{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1.5px solid var(--bd);border-radius:50px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--tx)}
+    .g-body{flex:1;display:flex;overflow:hidden}
+    .g-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:20px;background:var(--bg)}
+    .txt-box{max-width:640px;width:100%;font-family:var(--fm);font-size:20px;line-height:1.9;letter-spacing:.03em;user-select:none;padding:28px;border-radius:16px;background:#fff;border:1.5px solid var(--bd);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    .ch{color:#cbd5e1}
+    .ch.ok{color:var(--p)}
+    .ch.ng{color:var(--ng);background:rgba(239,68,68,.08);border-radius:2px}
+    .ch.cur{border-bottom:2px solid var(--p);animation:cb .8s infinite}
+    @keyframes cb{0%,100%{border-color:var(--p)}50%{border-color:transparent}}
+    .g-hint{font-size:13px;color:var(--tx2)}
+    .h-inp{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+    .sidebar{width:220px;border-left:1px solid var(--bd);padding:20px;display:flex;flex-direction:column;gap:14px;background:#fff;overflow-y:auto}
+    .sb-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2);font-weight:600;margin-bottom:2px}
+    .sb-big{font-size:36px;font-weight:900;font-family:var(--fm);color:var(--p);text-align:center}
+    .bar-bg{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:4px}
+    .bar-fill{height:100%;border-radius:4px;background:var(--p);transition:width .2s}
+
+    /* ===== ACHIEVEMENT TOAST ===== */
+    #toasts{position:fixed;top:72px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px}
+    .toast{background:#fff;border:1.5px solid var(--p);border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--p);box-shadow:0 4px 16px rgba(0,0,0,.1);animation:si .35s ease,fo .35s 2.6s ease both;min-width:200px}
+    @keyframes si{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes fo{to{transform:translateX(110%);opacity:0}}
+    .fp{position:fixed;pointer-events:none;font-size:18px;animation:fup 1.4s ease forwards;z-index:150}
+    @keyframes fup{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-90px) scale(.5)}}
+
+    /* ===== GAME OVER ===== */
+    #sgo{gap:24px;background:var(--bg)}
+    .go-title{font-size:38px;font-weight:900;color:var(--p);text-align:center}
+    .go-stats{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+    .st-card{padding:20px 28px;text-align:center;border-radius:16px;min-width:120px}
+    .st-v{font-size:44px;font-weight:900;font-family:var(--fm);color:var(--p)}
+    .st-l{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2);margin-top:3px}
+    .bdgs{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:560px}
+    .bdg{padding:14px 16px;text-align:center;border-radius:14px;min-width:90px;display:flex;flex-direction:column;align-items:center;gap:5px;animation:br .5s ease both}
+    @keyframes br{from{opacity:0;transform:scale(.5) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+    .bdg-i{font-size:30px}
+    .bdg-n{font-size:11px;font-weight:600;color:var(--tx2)}
+    .go-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+    @media(max-width:640px){.r-body{flex-direction:column}.sidebar{display:none}.g-stats{gap:16px}.g-val{font-size:22px}}
+  </style>
+</head>
+
+<body>
+<canvas id="bg"></canvas>
+<div id="toasts"></div>
+
+<!-- ====== WELCOME ====== -->
+<section id="sw" class="scr on">
+  <div class="logo">
+    <div class="logo-icon">🎮</div>
+    <h1>HEXAD AI診断</h1>
+    <p>AIとの会話でプレイヤータイプを診断</p>
+  </div>
+  <div class="desc">
+    <h2>あなたのゲーマータイプは？</h2>
+    <p>アンケートではなく、AIとの自然な会話で診断。結果に応じたタイピングゲームを体験しよう。</p>
+  </div>
+  <div class="chips">
+    <span class="chip c0">⚡ Achiever</span>
+    <span class="chip c1">🏆 Player</span>
+    <span class="chip c2">🦋 Free Spirit</span>
+    <span class="chip c3">💥 Disruptor</span>
+  </div>
+  <button class="btn btn-p" onclick="startChat()">診断スタート →</button>
+</section>
+
+<!-- ====== CHAT ====== -->
+<section id="sc" class="scr">
+  <div class="chat-head">
+    <div class="c-av">🤖</div>
+    <div>
+      <h3>HEXAD診断AI</h3>
+      <span>● オンライン</span>
+    </div>
+    <span class="chat-prog" id="prog">Q 0 / 4</span>
+  </div>
+  <div class="msgs" id="msgs"></div>
+  <div class="choice-btns" id="choices"></div>
+  <div class="input-area">
+    <input class="c-inp" id="cinp" placeholder="メッセージを入力（または上のボタンを選択）…" onkeydown="onKey(event)" disabled>
+    <button class="send" id="sbtn" onclick="send()" disabled>➤</button>
+  </div>
+</section>
+
+<!-- ====== RESULT ====== -->
+<section id="sr" class="scr">
+  <div class="r-head">
+    <p>あなたのHEXADタイプ</p>
+    <div class="r-type" id="rtype">Achiever</div>
+    <div class="r-sub" id="rsub">サブタイプ: Player</div>
+  </div>
+  <div class="r-body">
+    <div class="card r-chart">
+      <canvas id="rcv" width="200" height="200"></canvas>
+    </div>
+    <div class="r-right">
+      <div class="card r-desc" id="rdesc"></div>
+      <div class="card r-scores" id="rscores"></div>
+    </div>
+  </div>
+  <button class="btn btn-p" onclick="startGame()">タイピングゲームへ ▶</button>
+</section>
+
+<!-- ====== GAME ====== -->
+<section id="sg" class="scr">
+  <input class="h-inp" id="hinp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <div class="g-head">
+    <div class="g-stats">
+      <div class="g-stat"><div class="g-val" id="swpm">0</div><div class="g-lbl">WPM</div></div>
+      <div class="g-stat"><div class="g-val" id="sacc">100</div><div class="g-lbl">精度%</div></div>
+      <div class="g-stat"><div class="g-val" id="scmb">0</div><div class="g-lbl">コンボ</div></div>
+    </div>
+    <div class="g-timer" id="gtmr">60</div>
+    <div class="g-badge" id="gbdg"><span>⚡</span><span id="gbdn">Achiever</span></div>
+  </div>
+  <div class="g-body">
+    <div class="g-main">
+      <div class="txt-box" id="tbox" onclick="focusHid()"></div>
+      <p class="g-hint">クリックしてフォーカス → タイピングスタート</p>
+    </div>
+    <div class="sidebar" id="sbar"></div>
+  </div>
+</section>
+
+<!-- ====== GAME OVER ====== -->
+<section id="sgo" class="scr">
+  <div class="go-title" id="gotitle">ゲーム終了！</div>
+  <div class="go-stats">
+    <div class="card st-card"><div class="st-v" id="fwpm">0</div><div class="st-l">最高 WPM</div></div>
+    <div class="card st-card"><div class="st-v" id="facc">0</div><div class="st-l">精度 %</div></div>
+    <div class="card st-card"><div class="st-v" id="fch">0</div><div class="st-l">打字数</div></div>
+    <div class="card st-card"><div class="st-v" id="fcmb">0</div><div class="st-l">最大コンボ</div></div>
+  </div>
+  <div class="bdgs" id="bdgs"></div>
+  <div class="go-btns">
+    <button class="btn btn-p" onclick="startGame()">もう一度</button>
+    <button class="btn btn-g" onclick="resetAll()">診断し直す</button>
+  </div>
+</section>
+
+<script>
+// ===== API =====
+const KEY = 'AQ.Ab8RN6JeBfxbm63abPYj4RN1Yw99n-Fjrw_icNE_cZKz1o_GGQ';
+
+const APIURL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${KEY}`;
+
+const SYS = `あなたはゲーミフィケーション研究者で、HEXADプレイヤータイプ診断の専門家です。
+
+今回診断するタイプは以下の4種類のみです：
+• Achiever（達成者）：挑戦・スキルアップ・目標達成を重視。上達すること自体が喜び。
+• Player（プレイヤー）：報酬・ポイント・ランキングを重視。勝つこと・得ることが動機。
+• Free Spirit（自由人）：探索・創造・自律を重視。自分のペースで自由に動くことが好き。
+• Disruptor（破壊者）：変化・現状打破・システムへの挑戦を重視。ルールを疑い変えたがる。
+
+【会話のルール】
+1. 日本語で、親しみやすいカジュアルな口調（だ・である調 or ですます混合OK）
+2. ゲーム・学習・仕事に関するシチュエーション質問を自然な流れで行う
+3. 1回のターンで最大2問まで
+4. 相手の回答に興味を示してから次の質問へ
+5. 合計7〜8回のやりとり後に診断を完了する
+
+【診断完了時】
+7〜8ターン後、次のJSON形式のみを返す（前後の説明文なし、マークダウン記法なし）：
+{"diagnosis_complete":true,"primary":"タイプ名（英語）","secondary":"タイプ名（英語）","scores":{"Achiever":数値,"Player":数値,"Free Spirit":数値,"Disruptor":数値},"description":"診断コメント（日本語2文）"}
+
+スコアは0〜100の整数、合計が200〜260程度になるよう設定すること。
+まず自己紹介と最初の質問から始めてください。`;
+
+// ===== TYPE CONFIG =====
+const TC = {
+  Achiever: {
+    emoji:'⚡', theme:'th-achiever',
+    texts:[
+      'スキルはトレーニングで磨かれる。今日の努力が明日の才能になる。',
+      '限界を超えるたびに新しい自分が生まれる。挑戦こそが成長の源泉だ。',
+      '目標を持ち、計画を立て、実行する。それが達成者の生き方だ。',
+    ],
+    sb: sbAchiever, sbUpdate: sbAchieverUpdate
+  },
+  Player: {
+    emoji:'🏆', theme:'th-player',
+    texts:[
+      'ゲームを制する者が歴史を作る。ポイントを積み上げ頂点を目指せ。',
+      'スコアは嘘をつかない。報酬は勝者のもの。次のレベルへ挑め。',
+      'コインを集めろ。実績を解除しろ。伝説のプレイヤーになる時が来た。',
+    ],
+    sb: sbPlayer, sbUpdate: sbPlayerUpdate
+  },
+  'Free Spirit': {
+    emoji:'🦋', theme:'th-freespirit',
+    texts:[
+      '自分だけの答えを探せ。地図のない道を歩くことが冒険だ。',
+      '創造とは既成概念を壊すことから始まる。あなただけの軌跡を描け。',
+      '誰かが引いたレールを走る必要はない。自由な魂は自ら道を切り開く。',
+    ],
+    sb: sbFree, sbUpdate: sbFreeUpdate
+  },
+  Disruptor: {
+    emoji:'💥', theme:'th-disruptor',
+    texts:[
+      '現状維持は退化だ。ルールを疑え、システムを揺さぶれ、世界を変えろ。',
+      '歴史を変えた者たちは皆、常識破りだった。次はあなたの番だ。',
+      '壊すことを恐れるな。新しい世界は廃墟の上に建つ。破壊こそ創造だ。',
+    ],
+    sb: sbDisruptor, sbUpdate: sbDisruptorUpdate
+  }
+};
+
+const BADGES = [
+  {id:'s60',  icon:'⚡', name:'スピードスター', check:s=>s.wpm>=60},
+  {id:'s80',  icon:'🚀', name:'ブレイジング',   check:s=>s.wpm>=80},
+  {id:'p100', icon:'💎', name:'パーフェクト',   check:s=>s.acc===100},
+  {id:'c50',  icon:'🔥', name:'コンボ50',       check:s=>s.maxC>=50},
+  {id:'ch100',icon:'💯', name:'100文字',         check:s=>s.chars>=100},
+  {id:'ch200',icon:'⚔️', name:'200文字',         check:s=>s.chars>=200},
+];
+
+// ===== STATE =====
+let st = {
+  result: JSON.parse(localStorage.getItem('hr')||'null'),
+  hist: [], qc: 0, waiting: false,
+  txt:'', idx:0, errs:new Set(), tot:0, cor:0,
+  timer:null, left:60, started:false,
+  combo:0, maxC:0, pts:0, chaos:0, sideInt:null
+};
+
+// ===== PARTICLES =====
+const cv = document.getElementById('bg');
+const cx = cv.getContext('2d');
+let parts = [];
+function resize(){ cv.width=innerWidth; cv.height=innerHeight; }
+function initP(){
+  parts=[];
+  const n = Math.floor(cv.width*cv.height/14000);
+  for(let i=0;i<n;i++) parts.push({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.8+.4,a:Math.random()*.4+.1});
+}
+function drawP(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  const col = getComputedStyle(document.body).getPropertyValue('--p').trim()||'#6366f1';
+  parts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=cv.width; if(p.x>cv.width)p.x=0;
+    if(p.y<0)p.y=cv.height; if(p.y>cv.height)p.y=0;
+    cx.beginPath(); cx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    cx.fillStyle=col+Math.floor(p.a*255).toString(16).padStart(2,'0');
+    cx.fill();
+  });
+  for(let i=0;i<parts.length;i++){
+    for(let j=i+1;j<parts.length;j++){
+      const dx=parts[i].x-parts[j].x, dy=parts[i].y-parts[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<110){
+        cx.beginPath(); cx.moveTo(parts[i].x,parts[i].y); cx.lineTo(parts[j].x,parts[j].y);
+        cx.strokeStyle=col+Math.floor((1-d/110)*.15*255).toString(16).padStart(2,'0');
+        cx.lineWidth=.5; cx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawP);
+}
+window.addEventListener('resize',()=>{ resize(); initP(); });
+resize(); initP(); drawP();
+
+// ===== SCREEN =====
+function show(id){ document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('on',s.id===id)); }
+
+// ===== MOCK FALLBACK & 4択データ =====
+const MOCK_QUESTIONS = [
+  {
+    q: "こんにちは！HEXADプレイヤータイプ診断へようこそ！普段ゲームや仕事・学習で、一番モチベーションが上がるシチュエーションはどれですか？",
+    c: ["1. 高難易度の目標や課題をクリアした時", "2. スコア1位を取ったり特別な報酬を得た時", "3. 誰も気づいていない裏技や独自の方法を見つけた時", "4. ルールにとらわれず自分のペースで探索する時"]
+  },
+  {
+    q: "なるほど！では、新しいゲームやタスクを始めるとき、真っ先に何をチェックしますか？",
+    c: ["1. 全ての実績・トロフィーの獲得条件", "2. ランキングボードとトップのスコア", "3. システムの隙や隠しコマンドの有無", "4. 自由に行動できる隠しエリアやスキン"]
+  },
+  {
+    q: "素晴らしい視点ですね！壁にぶつかった時、あなたの行動パターンに一番近いものは？",
+    c: ["1. 何度も練習して自分のスキルを徹底的に磨く", "2. 最適な攻略情報や効率的なアイテムを探す", "3. 従来とは全く違う変則的なアプローチを試す", "4. 一旦別のルートや新しいエリアへ行って楽しむ"]
+  },
+  {
+    q: "最後の質問です！あなたにとって「最高のゲーム体験」とは何ですか？",
+    c: ["1. 自分の上達と成長を実感できる瞬間", "2. 他のライバルに勝ち、豪華な報酬を得る瞬間", "3. 常識や固定観念を覆す出来事に遭遇した瞬間", "4. 誰にも拘束されず、自由に創造・探索できた瞬間"]
+  }
+];
+
+function renderChoices(choices) {
+  const container = document.getElementById('choices');
+  if (!container) return;
+  if (!choices || choices.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = choices.map(text => 
+    `<button class="c-choice" onclick="selectChoice('${text.replace(/'/g, "\\'")}')">${text}</button>`
+  ).join('');
+}
+
+function selectChoice(text) {
+  const inp = document.getElementById('cinp');
+  inp.value = text;
+  document.getElementById('choices').innerHTML = '';
+  send();
+}
+
+function getMockResponse(qc, lastText) {
+  if (qc < MOCK_QUESTIONS.length) {
+    return MOCK_QUESTIONS[qc].q;
+  }
+  
+  // ユーザーの過去の回答から選択された傾向を集計してタイプを決定
+  const fullText = st.hist.map(m => m.t).join(' ');
+  let p = 'Achiever';
+  if (fullText.includes('報酬') || fullText.includes('ランキング') || fullText.includes('スコア')) p = 'Player';
+  else if (fullText.includes('裏技') || fullText.includes('変則') || fullText.includes('常識')) p = 'Disruptor';
+  else if (fullText.includes('自由') || fullText.includes('探索') || fullText.includes('自分のペース')) p = 'Free Spirit';
+  
+  const primaryTypes = ['Achiever', 'Player', 'Free Spirit', 'Disruptor'];
+  const secondaryTypes = primaryTypes.filter(t => t !== p);
+  const s = secondaryTypes[Math.floor(Math.random() * secondaryTypes.length)];
+  
+  const sc = { Achiever: 45, Player: 45, 'Free Spirit': 45, Disruptor: 45 };
+  sc[p] = 92;
+  sc[s] = 72;
+  
+  const descs = {
+    'Achiever': 'あなたは高い目標を掲げ、自己研鑽とスキル向上を追求する「達成者」タイプです！努力と成長そのものが最大の喜びです。',
+    'Player': 'あなたは明確な成果・スコア・報酬や勝利を追求する「プレイヤー」タイプです！勝負強さと成果獲得がモチベーションです。',
+    'Free Spirit': 'あなたは決まった枠にとらわれず、自由な探索と創造を楽しむ「自由人」タイプです！マイペースな冒険を好みます。',
+    'Disruptor': 'あなたは現状に変革をもたらし、システムに新しい風を吹き込む「破壊者」タイプです！独自のアプローチを強みとします。'
+  };
+
+  return JSON.stringify({
+    diagnosis_complete: true,
+    primary: p,
+    secondary: s,
+    scores: sc,
+    description: descs[p]
+  });
+}
+
+// ===== GEMINI =====
+async function callAI(hist){
+  try {
+    const res = await fetch(APIURL,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        system_instruction:{parts:[{text:SYS}]},
+        contents: hist.map(m=>({role:m.r==='ai'?'model':'user',parts:[{text:m.t}]})),
+        generationConfig:{temperature:.85,maxOutputTokens:700,topP:.95}
+      })
+    });
+    if(!res.ok){ throw new Error('API_LIMIT'); }
+    const d = await res.json();
+    return d.candidates[0].content.parts[0].text;
+  } catch(e) {
+    console.warn('Using mock Q&A flow:', e);
+    await new Promise(r => setTimeout(r, 400));
+    return getMockResponse(st.qc, hist[hist.length-1]?.t || '');
+  }
+}
+
+// ===== CHAT =====
+function addMsg(r,t){
+  const el=document.createElement('div');
+  el.className=`msg ${r}`;
+  el.innerHTML=`<div class="m-av">${r==='ai'?'🤖':'👤'}</div><div class="bubble">${t.replace(/\n/g,'<br>')}</div>`;
+  const m=document.getElementById('msgs');
+  m.appendChild(el); m.scrollTop=m.scrollHeight;
+  st.hist.push({r,t});
+}
+function showTyping(){
+  const el=document.createElement('div');
+  el.className='msg ai'; el.id='typ';
+  el.innerHTML=`<div class="m-av">🤖</div><div class="bubble typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  const m=document.getElementById('msgs');
+  m.appendChild(el); m.scrollTop=m.scrollHeight;
+}
+function hideTyping(){ const e=document.getElementById('typ'); if(e)e.remove(); }
+function setInput(en){
+  document.getElementById('cinp').disabled=!en;
+  document.getElementById('sbtn').disabled=!en;
+  if(en) document.getElementById('cinp').focus();
+}
+async function startChat(){
+  show('sc'); setInput(false); showTyping();
+  st.qc = 0;
+  const r = await callAI([{r:'user',t:'こんにちは、診断をお願いします。'}]);
+  hideTyping();
+  if(parseDiag(r)) return;
+  addMsg('ai',r);
+  st.hist=[{r:'user',t:'こんにちは、診断をお願いします。'},{r:'ai',t:r}];
+  if (MOCK_QUESTIONS[0]) renderChoices(MOCK_QUESTIONS[0].c);
+  setInput(true);
+}
+function onKey(e){ if(e.key==='Enter'&&!st.waiting) send(); }
+async function send(){
+  const inp=document.getElementById('cinp');
+  const t=inp.value.trim(); if(!t||st.waiting) return;
+  inp.value=''; 
+  document.getElementById('choices').innerHTML = ''; // 選択肢クリア
+  addMsg('user',t);
+  st.qc++; document.getElementById('prog').textContent=`Q ${Math.min(st.qc,4)} / 4`;
+  setInput(false); st.waiting=true; showTyping();
+  const r = await callAI(st.hist);
+  hideTyping();
+  st.waiting=false;
+  if(parseDiag(r)) return;
+  addMsg('ai',r); 
+  if (MOCK_QUESTIONS[st.qc]) renderChoices(MOCK_QUESTIONS[st.qc].c);
+  setInput(true);
+}
+function parseDiag(text){
+  const m=text.match(/\{[\s\S]*"diagnosis_complete"[\s\S]*\}/);
+  if(!m) return false;
+  try{
+    const d=JSON.parse(m[0]);
+    if(d.diagnosis_complete){ st.result=d; localStorage.setItem('hr',JSON.stringify(d)); showResult(d); return true; }
+  }catch(e){}
+  return false;
+}
+
+// ===== RESULT =====
+function showResult(d){
+  const cfg=TC[d.primary]||TC['Achiever'];
+  document.body.className=cfg.theme;
+  document.getElementById('rtype').textContent=d.primary;
+  document.getElementById('rsub').textContent=`サブタイプ: ${d.secondary}`;
+  document.getElementById('rdesc').textContent=d.description;
+  const types=['Achiever','Player','Free Spirit','Disruptor'];
+  const emj={'Achiever':'⚡','Player':'🏆','Free Spirit':'🦋','Disruptor':'💥'};
+  document.getElementById('rscores').innerHTML=types.map(tp=>`
+    <div class="s-row">
+      <div class="s-lbl">${emj[tp]} ${tp}</div>
+      <div class="s-bg"><div class="s-fill" style="width:0%" data-w="${d.scores[tp]}%"></div></div>
+      <div class="s-val">${d.scores[tp]}</div>
+    </div>`).join('');
+  setTimeout(()=>document.querySelectorAll('.s-fill').forEach(b=>b.style.width=b.dataset.w),200);
+  drawRadar(d.scores);
+  show('sr');
+}
+
+function drawRadar(sc){
+  const cv=document.getElementById('rcv'), ctx=cv.getContext('2d');
+  const types=['Achiever','Player','Free Spirit','Disruptor'];
+  const emj=['⚡','🏆','🦋','💥'];
+  const CX=100,CY=100,R=72;
+  const angles=types.map((_,i)=>i*2*Math.PI/4-Math.PI/2);
+  const col=getComputedStyle(document.body).getPropertyValue('--p').trim();
+  const col2=getComputedStyle(document.body).getPropertyValue('--p2').trim();
+  ctx.clearRect(0,0,200,200);
+  // grid
+  [.25,.5,.75,1].forEach(lv=>{
+    ctx.beginPath();
+    angles.forEach((a,i)=>{ const x=CX+R*lv*Math.cos(a),y=CY+R*lv*Math.sin(a); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.closePath(); ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1; ctx.stroke();
+  });
+  // axes
+  angles.forEach(a=>{ ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+R*Math.cos(a),CY+R*Math.sin(a));ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;ctx.stroke(); });
+  // labels
+  ctx.font='13px Outfit,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  types.forEach((_,i)=>{ const lr=R+20,x=CX+lr*Math.cos(angles[i]),y=CY+lr*Math.sin(angles[i]); ctx.fillText(emj[i],x,y); });
+  // data
+  ctx.beginPath();
+  types.forEach((tp,i)=>{ const v=(sc[tp]||0)/100,x=CX+R*v*Math.cos(angles[i]),y=CY+R*v*Math.sin(angles[i]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.closePath();
+  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
+  g.addColorStop(0,col+'44'); g.addColorStop(1,col+'18');
+  ctx.fillStyle=g; ctx.fill();
+  ctx.strokeStyle=col; ctx.lineWidth=2.2; ctx.stroke();
+  // dots
+  types.forEach((tp,i)=>{ const v=(sc[tp]||0)/100,x=CX+R*v*Math.cos(angles[i]),y=CY+R*v*Math.sin(angles[i]); ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fillStyle=col2;ctx.fill(); });
+}
+
+// ===== GAME =====
+function startGame(){
+  const d=st.result; if(!d) return;
+  const cfg=TC[d.primary]||TC['Achiever'];
+  document.body.className=cfg.theme;
+  // reset
+  st.idx=0; st.errs=new Set(); st.tot=0; st.cor=0;
+  st.left=60; st.started=false; st.combo=0; st.maxC=0; st.pts=0; st.chaos=0;
+  if(st.timer){ clearInterval(st.timer); st.timer=null; }
+  if(st.sideInt){ clearInterval(st.sideInt); st.sideInt=null; }
+  // build text
+  const arr=cfg.texts; st.txt=arr.join(' ');
+  // UI
+  document.getElementById('gbdg').innerHTML=`<span>${cfg.emoji}</span><span>${d.primary}</span>`;
+  document.getElementById('gtmr').textContent='60';
+  document.getElementById('gtmr').className='g-timer';
+  document.getElementById('swpm').textContent='0';
+  document.getElementById('sacc').textContent='100';
+  document.getElementById('scmb').textContent='0';
+  cfg.sb(); // render sidebar
+  renderTxt();
+  show('sg');
+  setTimeout(focusHid,80);
+  const hi=document.getElementById('hinp');
+  hi.value=''; hi.removeEventListener('keydown',gameKey); hi.addEventListener('keydown',gameKey);
+}
+function focusHid(){ document.getElementById('hinp').focus(); }
+
+function renderTxt(){
+  document.getElementById('tbox').innerHTML=st.txt.split('').map((c,i)=>{
+    let cl='ch';
+    if(i<st.idx) cl+=st.errs.has(i)?' ng':' ok';
+    if(i===st.idx) cl+=' cur';
+    return `<span class="${cl}">${c===' '?'&nbsp;':c}</span>`;
+  }).join('');
+}
+
+function gameKey(e){
+  if(e.key.length!==1&&e.key!=='Backspace') return;
+  e.preventDefault();
+  if(!st.started){ startTimer(); st.started=true; }
+  if(e.key==='Backspace'){
+    if(st.idx>0){ st.idx--; st.errs.delete(st.idx); st.combo=0; renderTxt(); updStats(); }
+    return;
+  }
+  const exp=st.txt[st.idx]; const ok=e.key===exp;
+  st.tot++;
+  if(ok){
+    st.cor++; st.combo++; if(st.combo>st.maxC) st.maxC=st.combo;
+    onCorrect(e.key);
+  } else {
+    st.errs.add(st.idx); st.combo=0;
+  }
+  st.idx++;
+  if(st.idx>=st.txt.length){ st.idx=0; st.errs=new Set(); }
+  renderTxt(); updStats();
+  TC[st.result?.primary||'Achiever'].sbUpdate();
+}
+
+function startTimer(){
+  st.timer=setInterval(()=>{
+    st.left--;
+    const el=document.getElementById('gtmr');
+    el.textContent=st.left;
+    if(st.left<=10) el.className='g-timer dng';
+    else if(st.left<=20) el.className='g-timer warn';
+    if(st.left<=0){ clearInterval(st.timer); endGame(); }
+  },1000);
+}
+
+function updStats(){
+  const el=60-st.left, wpm=el>0?Math.round((st.cor/5)/(el/60)):0;
+  const acc=st.tot>0?Math.round(st.cor/st.tot*100):100;
+  document.getElementById('swpm').textContent=wpm;
+  document.getElementById('sacc').textContent=acc;
+  document.getElementById('scmb').textContent=st.combo;
+}
+
+function onCorrect(k){
+  const tp=st.result?.primary;
+  if(tp==='Player'){
+    const mult=Math.max(1,Math.floor(st.combo/10));
+    st.pts+=10*mult;
+    if(st.combo>0&&st.combo%25===0) floatTxt(`🔥×${mult}コンボ！`);
+  } else if(tp==='Disruptor'){
+    st.chaos=Math.min(100,st.chaos+1.2);
+    if(st.chaos>=100){ st.chaos=0; chaosBurst(); }
+  } else if(tp==='Achiever'){
+    if(st.combo===10) toast('⚡','10コンボ達成！');
+    if(st.combo===30) toast('🌟','30コンボ！マスター！');
+    if(st.combo===50) toast('💎','50コンボ！レジェンド！');
+  } else if(tp==='Free Spirit'){
+    if(st.cor%50===0&&st.cor>0) toast('🦋','新エリア発見！');
+  }
+}
+
+function floatTxt(t){
+  const el=document.createElement('div');
+  el.className='fp'; el.style.left=`${Math.random()*50+25}%`; el.style.top=`${Math.random()*40+30}%`;
+  el.textContent=t; document.body.appendChild(el); setTimeout(()=>el.remove(),1400);
+}
+
+function chaosBurst(){
+  toast('💥','CHAOS BURST！');
+  document.body.style.filter='hue-rotate(180deg)';
+  setTimeout(()=>document.body.style.filter='',400);
+}
+
+function toast(icon,msg){
+  const wrap=document.getElementById('toasts');
+  const el=document.createElement('div');
+  el.className='toast';
+  el.innerHTML=`<span style="font-size:18px">${icon}</span><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
+// ===== SIDEBARS =====
+function sbAchiever(){
+  document.getElementById('sbar').innerHTML=`
+    <div><div class="sb-lbl">現在レベル</div><div class="sb-big" id="slv">Lv.1</div></div>
+    <div><div class="sb-lbl">レベル進捗</div><div class="bar-bg"><div class="bar-fill" id="slvb" style="width:0%"></div></div><div style="font-size:11px;color:var(--tx2);margin-top:4px" id="slvl">あと50文字</div></div>
+    <div><div class="sb-lbl">コンボ</div><div class="sb-big" id="scb2" style="color:var(--a)">0</div></div>
+    <div><div class="sb-lbl">マイルストーン</div><div style="font-size:12px;color:var(--tx2);line-height:2" id="sms">
+      <div id="m10">☐ コンボ10</div><div id="m30">☐ コンボ30</div><div id="m50">☐ コンボ50</div>
+    </div></div>`;
+}
+function sbAchieverUpdate(){
+  const lv=Math.floor(st.cor/50)+1, pr=(st.cor%50)/50*100;
+  const a=document.getElementById('slv'); if(a)a.textContent=`Lv.${lv}`;
+  const b=document.getElementById('slvb'); if(b)b.style.width=pr+'%';
+  const l=document.getElementById('slvl'); if(l)l.textContent=`あと${50-st.cor%50}文字`;
+  const c=document.getElementById('scb2'); if(c)c.textContent=st.combo;
+  ['m10','m30','m50'].forEach((id,i)=>{
+    const th=[10,30,50][i], el=document.getElementById(id);
+    if(el){ el.textContent=(st.maxC>=th?'☑':'☐')+` コンボ${th}`; el.style.color=st.maxC>=th?'var(--p2)':'var(--tx2)'; }
+  });
+}
+
+function sbPlayer(){
+  document.getElementById('sbar').innerHTML=`
+    <div><div class="sb-lbl">スコア</div><div class="sb-big" id="spts">0</div></div>
+    <div><div class="sb-lbl">マルチプライヤー</div><div style="font-size:20px;font-weight:700;text-align:center;color:var(--a)" id="smlt">×1</div></div>
+    <div><div class="sb-lbl">コイン</div><div style="font-size:26px;font-weight:700;text-align:center;color:#fcd34d" id="scoin">🪙 0</div></div>`;
+}
+function sbPlayerUpdate(){
+  const mult=Math.max(1,Math.floor(st.combo/10));
+  const p=document.getElementById('spts'); if(p)p.textContent=st.pts.toLocaleString();
+  const m=document.getElementById('smlt'); if(m)m.textContent=`×${mult}`;
+  const c=document.getElementById('scoin'); if(c)c.textContent=`🪙 ${Math.floor(st.pts/100)}`;
+}
+
+function sbFree(){
+  document.getElementById('sbar').innerHTML=`
+    <div><div class="sb-lbl">探索エリア</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
+        ${['🌊 海','🌌 宇宙','🌿 森','🌋 火山'].map((z,i)=>`<div id="zone${i}" style="padding:6px;border-radius:8px;border:1px solid var(--gb);font-size:11px;text-align:center;color:${i===0?'var(--p2)':'var(--tx2)'}">${z}</div>`).join('')}
+      </div>
+    </div>
+    <div><div class="sb-lbl">創造力</div><div class="bar-bg"><div class="bar-fill" id="scr" style="width:0%;background:linear-gradient(90deg,#7c3aed,#10b981)"></div></div></div>
+    <div><div class="sb-lbl">発見した宝</div><div style="font-size:20px;text-align:center;letter-spacing:4px" id="strs">⬡ ⬡ ⬡</div></div>`;
+}
+function sbFreeUpdate(){
+  const cr=Math.min(100,Math.floor(st.cor/2));
+  const zone=Math.floor(st.cor/50)%4;
+  const e=document.getElementById('scr'); if(e)e.style.width=cr+'%';
+  [0,1,2,3].forEach(i=>{ const z=document.getElementById('zone'+i); if(z)z.style.color=i===zone?'var(--p2)':'var(--tx2)'; });
+  const t=Math.min(3,Math.floor(st.cor/70));
+  const tr=document.getElementById('strs');
+  if(tr) tr.textContent=['💎','🌙','⭐'].slice(0,t).join(' ')+' ⬡'.repeat(Math.max(0,3-t));
+}
+
+function sbDisruptor(){
+  document.getElementById('sbar').innerHTML=`
+    <div><div class="sb-lbl">カオスゲージ</div><div class="sb-big" id="sch" style="color:var(--p)">0%</div>
+      <div class="bar-bg"><div id="schb" style="height:7px;border-radius:4px;background:linear-gradient(90deg,#00ff88,#ff0080);width:0%;transition:width .1s"></div></div>
+      <div style="font-size:11px;color:var(--tx2);margin-top:4px">100%でCHAOS BURST！</div>
+    </div>
+    <div><div class="sb-lbl">BURST回数</div><div class="sb-big" id="sbst" style="color:var(--a)">0</div></div>
+    <div><div class="sb-lbl">エラー数</div><div style="font-size:24px;font-weight:700;text-align:center;color:var(--tx2)" id="serr">0</div></div>`;
+}
+function sbDisruptorUpdate(){
+  const c=Math.round(st.chaos), burst=Math.floor(st.cor/100);
+  const ch=document.getElementById('sch'); if(ch)ch.textContent=c+'%';
+  const cb=document.getElementById('schb'); if(cb)cb.style.width=c+'%';
+  const bs=document.getElementById('sbst'); if(bs)bs.textContent=burst;
+  const er=document.getElementById('serr'); if(er)er.textContent=st.tot-st.cor;
+}
+
+// ===== GAME OVER =====
+function endGame(){
+  document.getElementById('hinp').removeEventListener('keydown',gameKey);
+  if(st.sideInt){ clearInterval(st.sideInt); st.sideInt=null; }
+  const el=60, wpm=Math.round((st.cor/5)/(el/60));
+  const acc=st.tot>0?Math.round(st.cor/st.tot*100):100;
+  document.getElementById('fwpm').textContent=wpm;
+  document.getElementById('facc').textContent=acc;
+  document.getElementById('fch').textContent=st.cor;
+  document.getElementById('fcmb').textContent=st.maxC;
+  const tp=st.result?.primary;
+  const titles={
+    'Achiever':`⚡ 挑戦達成！ WPM ${wpm}`,
+    'Player':`🏆 ゲームクリア！ ${st.pts.toLocaleString()}pt`,
+    'Free Spirit':`🦋 自由な探索！ WPM ${wpm}`,
+    'Disruptor':`💥 カオス解放！ ${Math.floor(st.cor/100)}回BURST`
+  };
+  document.getElementById('gotitle').textContent=titles[tp]||`ゲーム終了！ WPM ${wpm}`;
+  const gs={wpm,acc,chars:st.cor,maxC:st.maxC};
+  const earned=BADGES.filter(b=>b.check(gs));
+  const ba=document.getElementById('bdgs');
+  ba.innerHTML=earned.length?earned.map((b,i)=>`<div class="card bdg" style="animation-delay:${i*.1}s"><div class="bdg-i">${b.icon}</div><div class="bdg-n">${b.name}</div></div>`).join(''):'<p style="color:var(--tx2);font-size:13px">もう少し！次はバッジを獲得しよう</p>';
+  show('sgo');
+}
+
+function resetAll(){
+  st.result=null; st.hist=[]; st.qc=0;
+  localStorage.removeItem('hr');
+  document.getElementById('msgs').innerHTML='';
+  document.getElementById('prog').textContent='Q 0 / 8';
+  document.body.className='';
+  show('sw');
+}
+
+// ===== INIT =====
+if(st.result){
+  const bar=document.createElement('div');
+  bar.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--gl);border:1px solid var(--gb);border-radius:50px;padding:8px 18px;font-size:12px;color:var(--tx2);backdrop-filter:blur(20px);z-index:200;display:flex;gap:10px;align-items:center;';
+  bar.innerHTML=`<span>前回: <strong style="color:var(--p2)">${st.result.primary}</strong></span><button onclick="showResult(st.result)" style="background:linear-gradient(135deg,var(--p),var(--a));border:none;color:#fff;padding:3px 12px;border-radius:20px;font-size:11px;cursor:pointer;font-family:var(--fn)">復元</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--tx2);cursor:pointer">×</button>`;
+  document.body.appendChild(bar);
+}
+</script>
+</body>
+</html>
