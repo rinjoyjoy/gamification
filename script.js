@@ -215,10 +215,17 @@ function getStats() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.stats);
     if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATS));
-    return Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATS)), JSON.parse(raw));
+    const parsed = JSON.parse(raw);
+    return Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATS)), parsed);
   } catch (e) { return JSON.parse(JSON.stringify(DEFAULT_STATS)); }
 }
 function saveStats(stats) { localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats)); }
+
+function resetStats() {
+  const fresh = JSON.parse(JSON.stringify(DEFAULT_STATS));
+  saveStats(fresh);
+  return fresh;
+}
 
 function getLog() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.log) || '[]'); } catch (e) { return []; }
@@ -302,9 +309,12 @@ function renderChoices(choices) {
 
 function selectChoice(txt) { $('#cinp').value = txt; renderChoices([]); sendMsg(); }
 
-async function startChat() {
+async function startChat(isReset = false) {
   appState.nickname = $('#input-nickname').value.trim() || 'ゲスト';
   localStorage.setItem(STORAGE_KEYS.nickname, appState.nickname);
+  if (isReset) {
+    resetStats();
+  }
   chatHist = []; chatQc = 0; chatWaiting = false;
   $('#msgs').innerHTML = '';
   showScreen('screen-chat');
@@ -346,8 +356,8 @@ function parseDiag(text) {
 }
 
 function initWelcomeScreen() {
-  $('#btn-start-survey-llm').addEventListener('click', () => startChat());
-  $('#btn-start-survey-rule').addEventListener('click', () => startChat());
+  $('#btn-start-survey-llm').addEventListener('click', () => startChat(true));
+  $('#btn-start-survey-rule').addEventListener('click', () => startChat(true));
 }
 
 /* ============================================================
@@ -500,9 +510,9 @@ function setupFreeSpirit(body, stats) {
       ${chipGroup('category', [{ value: 'random', label: 'おまかせ' }, ...Object.entries(CATEGORY_LABELS).map(([v, l]) => ({ value: v, label: l }))], stats.freeSpirit.category)}
     </div>
     <div class="setup-row">
-      <h3>アバターカラー（自由に選択可）</h3>
+      <h3>アバターカラー</h3>
       <div class="color-swatch-group">
-        ${AVATAR_COLORS.map((c) => `<span class="color-swatch${c === stats.selectedColor ? ' selected' : ''}" data-color="${c}" style="background:${c}"></span>`).join('')}
+        ${AVATAR_COLORS.map((c) => `<span class="color-swatch${stats.unlockedColors.includes(c) ? '' : ' locked'}${c === stats.selectedColor ? ' selected' : ''}" data-color="${c}" style="background:${stats.unlockedColors.includes(c) ? c : '#ccc'}; opacity:${stats.unlockedColors.includes(c) ? 1 : 0.35}"></span>`).join('')}
       </div>
     </div>
   `;
@@ -512,10 +522,12 @@ function setupFreeSpirit(body, stats) {
   });
   body.querySelectorAll('.color-swatch').forEach((sw) => {
     sw.addEventListener('click', () => {
+      const color = sw.dataset.color;
+      if (!stats.unlockedColors.includes(color)) return;
       body.querySelectorAll('.color-swatch').forEach((s) => s.classList.remove('selected'));
       sw.classList.add('selected');
-      appState.setup.avatarColor = sw.dataset.color;
-      const s = getStats(); s.selectedColor = sw.dataset.color; saveStats(s);
+      appState.setup.avatarColor = color;
+      const s = getStats(); s.selectedColor = color; saveStats(s);
     });
   });
 }
