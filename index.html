@@ -3,340 +3,831 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HEXAD AI対話診断 × タイプ適合型タイピングゲーム</title>
+  <title>HEXAD AI対話診断 × タイプ適応型タイピングゲーム</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* ===== THEME VARIABLES ===== */
     :root {
-      --p: #4f46e5; --p2: #818cf8; --a: #ec4899;
-      --bg: #f8fafc; --bg2: #f1f5f9;
-      --card: #ffffff; --bd: #e2e8f0;
-      --tx: #1e293b; --tx2: #64748b;
-      --ok: #059669; --ng: #ef4444;
-      --fn: 'Outfit', sans-serif; --fm: 'JetBrains Mono', monospace;
+      --surface-1: #ffffff;
+      --page: #f8fafc;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --gridline: #e2e8f0;
+      --baseline: #cbd5e1;
+      --border: rgba(15,23,42,0.10);
+
+      --good: #0ca30c;
+      --warning: #fab219;
+      --serious: #ec835a;
+      --critical: #d03b3b;
+
+      /* Hexad type colors */
+      --type-achiever: #2563eb;
+      --type-player: #d97706;
+      --type-socialiser: #eda100;
+      --type-freeSpirit: #059669;
+      --type-philanthropist: #7c3aed;
+      --type-disruptor: #dc2626;
+
+      --radius: 16px;
+      --p: #4f46e5;
     }
 
-    body.th-achiever  { --p:#2563eb; --p2:#60a5fa; --a:#6366f1; }
-    body.th-player    { --p:#d97706; --p2:#f59e0b; --a:#ef4444; }
-    body.th-freespirit{ --p:#7c3aed; --p2:#a78bfa; --a:#10b981; }
-    body.th-disruptor { --p:#059669; --p2:#10b981; --a:#6366f1; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ===== RESET ===== */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100%; overflow-x: hidden; font-family: var(--fn); background: var(--bg); color: var(--tx); }
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--page);
+      color: var(--text-primary);
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+    }
 
-    /* ===== CANVAS ===== */
-    #bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .4; }
+    #app {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+      min-height: 100vh;
+    }
 
-    /* ===== APP CONTAINER ===== */
-    #app { position: relative; z-index: 10; max-width: 800px; margin: 0 auto; padding: 20px 16px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+    .screen { display: none; }
+    .screen.active { display: block; animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* ===== SCREENS ===== */
-    .scr { display: none; width: 100%; animation: fadeIn .3s ease; }
-    .scr.on { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--gridline);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+      margin-bottom: 20px;
+    }
+    .card.center { text-align: center; }
 
-    /* ===== CARDS ===== */
-    .card { background: var(--card); border: 1px solid var(--bd); border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,.05); margin-bottom: 16px; }
+    h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 12px; color: var(--text-primary); }
+    h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; }
+    h3 { font-size: 1.05rem; font-weight: 600; margin: 16px 0 8px; }
 
-    /* ===== BUTTONS ===== */
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 28px; border-radius: 50px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all .2s; }
-    .btn-p { background: var(--p); color: #fff; box-shadow: 0 4px 14px rgba(79,70,229,.25); }
-    .btn-p:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,70,229,.35); opacity: .95; }
-    .btn-p:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-    .btn-sec { background: var(--bg2); color: var(--tx); border: 1px solid var(--bd); }
-    .btn-sec:hover { background: #e2e8f0; }
+    .lead { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 20px; }
+    .hint { color: var(--text-muted); font-size: 0.85rem; }
 
-    /* ===== CHAT STYLING ===== */
-    .chat-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--bd); background: #f8fafc; border-top-left-radius: 20px; border-top-right-radius: 20px; }
-    .c-av { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--p), var(--a)); display: flex; align-items: center; justify-content: center; font-size: 20px; }
-    .msgs { max-height: 380px; min-height: 280px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .field input[type="text"], .field select {
+      width: 100%; padding: 12px 16px; border-radius: 10px;
+      border: 1.5px solid var(--baseline); background: #fff;
+      color: var(--text-primary); font-size: 0.95rem; outline: none;
+    }
+    .field input[type="text"]:focus { border-color: var(--p); }
+
+    .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+
+    .btn {
+      appearance: none; border: none; border-radius: 999px;
+      padding: 12px 24px; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: transform .08s ease, opacity .15s ease, background .2s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--p); color: #fff; box-shadow: 0 4px 12px rgba(79,70,229,0.25); }
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-secondary { background: var(--gridline); color: var(--text-primary); }
+    .btn-secondary:hover { background: #cbd5e1; }
+
+    /* ---------- AI CHAT DESIGN ---------- */
+    .chat-container { border: 1px solid var(--gridline); border-radius: 16px; overflow: hidden; background: #fff; }
+    .chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--gridline); background: #f8fafc; }
+    .c-av { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg,#4f46e5,#ec4899); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .msgs { max-height: 380px; min-height: 260px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: #f8fafc; }
     .msg { display: flex; gap: 10px; max-width: 88%; }
     .msg.ai { margin-right: auto; }
     .msg.user { margin-left: auto; flex-direction: row-reverse; }
-    .bubble { padding: 12px 18px; border-radius: 18px; font-size: 14px; line-height: 1.65; }
-    .msg.ai .bubble { background: #fff; border: 1px solid var(--bd); color: var(--tx); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    .bubble { padding: 12px 18px; border-radius: 16px; font-size: 14px; line-height: 1.6; }
+    .msg.ai .bubble { background: #fff; border: 1px solid var(--gridline); color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
     .msg.user .bubble { background: var(--p); color: #fff; }
-    
-    .choice-btns { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 12px; background: #f8fafc; }
-    .c-choice { padding: 11px 18px; border-radius: 12px; background: #fff; border: 1.5px solid var(--bd); color: var(--tx); font-size: 13.5px; font-weight: 600; text-align: left; transition: all .2s; cursor: pointer; }
-    .c-choice:hover { border-color: var(--p); color: var(--p); background: var(--bg2); transform: translateX(3px); }
 
-    .input-area { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--bd); background: #fff; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
-    .c-inp { flex: 1; background: #fff; border: 1.5px solid var(--bd); border-radius: 50px; padding: 11px 18px; font-size: 14px; outline: none; }
+    .choice-btns { display: flex; flex-direction: column; gap: 8px; padding: 0 20px 12px; background: #f8fafc; }
+    .c-choice { padding: 11px 18px; border-radius: 12px; background: #fff; border: 1.5px solid var(--baseline); color: var(--text-primary); font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; transition: all .2s; }
+    .c-choice:hover { border-color: var(--p); color: var(--p); background: #f1f5f9; transform: translateX(3px); }
+
+    .input-area { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--gridline); background: #fff; }
+    .c-inp { flex: 1; background: #fff; border: 1.5px solid var(--baseline); border-radius: 50px; padding: 10px 18px; font-size: 14px; outline: none; }
     .c-inp:focus { border-color: var(--p); }
 
-    /* ===== TYPING GAME UI ===== */
-    .typing-box { text-align: center; margin: 24px 0; }
-    .kanji-text { font-size: 28px; font-weight: 700; color: var(--tx); margin-bottom: 8px; letter-spacing: 1px; }
-    .reading-text { font-size: 18px; color: var(--tx2); margin-bottom: 14px; }
-    .romaji-box { font-family: var(--fm); font-size: 24px; font-weight: 700; padding: 16px; background: var(--bg2); border-radius: 14px; border: 1.5px solid var(--bd); display: inline-block; letter-spacing: 2px; }
-    .roma-ok { color: var(--ok); }
-    .roma-curr { color: var(--p); text-decoration: underline; background: rgba(79,70,229,.1); padding: 0 2px; border-radius: 3px; }
-    .roma-rem { color: #94a3b8; }
+    /* ---------- TYPE BADGE & RESULT ---------- */
+    .type-badge { display: inline-flex; align-items: center; gap: 10px; padding: 10px 20px; border-radius: 999px; font-weight: 700; font-size: 1.1rem; margin-bottom: 14px; color: #fff; }
+    .bar-chart { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+    .bar-row { display: grid; grid-template-columns: 120px 1fr 44px; align-items: center; gap: 10px; }
+    .bar-label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; }
+    .bar-track { position: relative; height: 12px; background: var(--gridline); border-radius: 999px; overflow: hidden; }
+    .bar-fill { position: absolute; inset: 0; width: 0%; border-radius: 999px; transition: width .5s ease; }
+    .bar-value { font-size: 0.85rem; color: var(--text-muted); text-align: right; font-family: 'JetBrains Mono', monospace; }
 
-    .stats-bar { display: flex; justify-content: space-around; padding: 14px; background: var(--bg2); border-radius: 14px; margin-bottom: 20px; font-family: var(--fm); }
-    .stat-item { text-align: center; }
-    .stat-val { font-size: 20px; font-weight: 700; color: var(--p); }
-    .stat-lbl { font-size: 11px; color: var(--tx2); text-transform: uppercase; }
+    /* ---------- SETUP SCREEN CHIPS ---------- */
+    .setup-row { margin-bottom: 20px; }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { padding: 8px 16px; border-radius: 999px; border: 1.5px solid var(--baseline); font-size: 0.88rem; cursor: pointer; color: var(--text-secondary); background: #fff; font-weight: 600; transition: all .2s; }
+    .chip.selected { color: #fff; border-color: transparent; }
+    .color-swatch-group { display: flex; gap: 10px; }
+    .color-swatch { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: transform .2s; }
+    .color-swatch:hover { transform: scale(1.1); }
+    .color-swatch.selected { border-color: var(--text-primary); }
 
-    .gauge-track { width: 100%; height: 10px; background: #e2e8f0; border-radius: 50px; overflow: hidden; margin-top: 8px; }
-    .gauge-fill { height: 100%; background: var(--p); width: 0%; transition: width .3s; }
+    /* ---------- GAME SCREEN & HUD ---------- */
+    .game-hud { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; font-size: 0.85rem; color: var(--text-secondary); background: #f1f5f9; padding: 16px; border-radius: 12px; }
+    .game-hud .hud-item strong { display: block; font-size: 1.3rem; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+    .game-sentence { position: relative; text-align: center; padding: 28px 12px; border-radius: 16px; background: #fff; border: 1px solid var(--gridline); box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    .game-kanji { font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.03em; color: var(--text-primary); }
+    .game-reading { font-size: 1rem; color: var(--text-muted); margin-bottom: 18px; }
+    .game-romaji { font-size: 1.7rem; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; border-radius: 8px; padding: 8px; }
+    .rj-done { color: var(--good); font-weight: 700; }
+    .rj-current { color: #fff; background: var(--p); border-radius: 4px; padding: 0 4px; }
+    .rj-pending { color: var(--text-muted); }
+
+    .game-romaji.mistake-flash { animation: mistakeShake .3s ease; }
+    @keyframes mistakeShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+
+    .complete-pop { position: absolute; top: 8px; right: 16px; font-size: 2.2rem; font-weight: 800; color: var(--good); pointer-events: none; animation: completePop .7s ease-out forwards; }
+    @keyframes completePop { 0% { opacity: 0; transform: translateY(6px) scale(0.6); } 25% { opacity: 1; transform: translateY(0) scale(1.2); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
+
+    /* ---------- POSTGAME & LEADERBOARD ---------- */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-tile { background: #f8fafc; border: 1px solid var(--gridline); border-radius: 12px; padding: 14px; text-align: center; }
+    .stat-tile .stat-value { font-size: 1.5rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--p); }
+    .stat-tile .stat-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+
+    .leaderboard { list-style: none; padding: 0; margin: 10px 0 0; }
+    .leaderboard li { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--gridline); font-size: 0.9rem; }
+    .leaderboard li:last-child { border-bottom: none; }
+    .leaderboard li.me { font-weight: 700; background: rgba(79,70,229,0.06); border-radius: 6px; }
+
+    @media (max-width: 540px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .bar-row { grid-template-columns: 90px 1fr 36px; }
+    }
   </style>
 </head>
 <body>
-  <canvas id="bg"></canvas>
-
   <div id="app">
-    <!-- ====== 1. AI対話診断画面 ====== -->
-    <section id="sc" class="scr on">
+
+    <!-- ============ 0. ウェルカム画面 ============ -->
+    <section id="screen-welcome" class="screen active">
+      <div class="card center">
+        <h1>タイプ適応型 タイピングゲーム</h1>
+        <p class="lead">AI対話診断であなたのゲーミフィケーション嗜好タイプ（HEXADモデル）を判定し、タイプに合わせた要素でタイピング練習を行う研究用プロトタイプです。</p>
+
+        <div class="field" style="text-align:left; max-width:380px; margin:0 auto 24px;">
+          <label for="input-nickname">ニックネーム（任意）</label>
+          <input type="text" id="input-nickname" placeholder="例：たろう" maxlength="20">
+        </div>
+
+        <div class="button-row" style="justify-content:center;">
+          <button id="btn-start-ai" class="btn btn-primary" style="padding:14px 32px; font-size:1.05rem;">
+            🤖 AI対話診断をはじめる
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 1. AI対話診断画面 ============ -->
+    <section id="screen-chat" class="screen">
       <div class="card" style="padding:0; overflow:hidden;">
-        <div class="chat-head">
-          <div class="c-av">🤖</div>
-          <div>
-            <h3 style="font-size:16px; font-weight:700;">HEXAD AI対話診断</h3>
-            <span id="ai-status" style="font-size:12px; color:var(--ok); font-weight:600;">● Gemini 2.0 Flash 接続中</span>
+        <div class="chat-container">
+          <div class="chat-head">
+            <div class="c-av">🤖</div>
+            <div>
+              <h3 style="margin:0; font-size:1.05rem; font-weight:700;">HEXAD AI対話診断</h3>
+              <span id="ai-status" style="font-size:0.8rem; color:var(--good); font-weight:600;">● Gemini 2.0 Flash 接続中</span>
+            </div>
+            <span id="chat-prog" style="margin-left:auto; font-size:0.85rem; color:var(--text-secondary); background:var(--gridline); padding:4px 14px; border-radius:50px; font-weight:600;">Q 0 / 4</span>
           </div>
-          <span class="chat-prog" id="prog" style="margin-left:auto; font-size:13px; color:var(--tx2); background:var(--bg2); padding:4px 12px; border-radius:50px;">Q 0 / 4</span>
-        </div>
-        <div class="msgs" id="msgs"></div>
-        <div class="choice-btns" id="choices"></div>
-        <div class="input-area">
-          <input class="c-inp" id="cinp" placeholder="メッセージを入力（または上のボタンを選択）…" onkeydown="onKey(event)" disabled>
-          <button class="btn btn-p" id="sbtn" onclick="send()" style="padding:10px 18px;" disabled>➤</button>
+          <div class="msgs" id="msgs"></div>
+          <div class="choice-btns" id="choices"></div>
+          <div class="input-area">
+            <input class="c-inp" id="cinp" placeholder="メッセージを入力（または上のボタンを選択）…" onkeydown="onKey(event)" disabled>
+            <button class="btn btn-primary" id="sbtn" onclick="sendMsg()" style="padding:10px 18px;" disabled>➤</button>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ====== 2. 診断結果画面 ====== -->
-    <section id="sr" class="scr">
-      <div class="card" style="text-align:center;">
-        <p style="font-size:13px; color:var(--tx2); text-transform:uppercase; letter-spacing:1px;">あなたのHEXADタイプ</p>
-        <h1 id="rtype" style="font-size:42px; font-weight:900; color:var(--p); margin:8px 0;">Achiever</h1>
-        <p id="rsub" style="font-size:14px; color:var(--tx2); margin-bottom:20px;">サブタイプ: Player</p>
-        
-        <div id="rdesc" style="background:var(--bg2); padding:18px; border-radius:14px; text-align:left; font-size:14px; line-height:1.7; color:var(--tx); margin-bottom:24px;">
-          診断コメントがここに表示されます。
-        </div>
-
-        <button class="btn btn-p" style="width:100%; padding:16px;" onclick="startGameSetup()">
-          タイプ適合タイピングゲームを開始する →
-        </button>
-      </div>
-    </section>
-
-    <!-- ====== 3. タイピングゲーム画面 ====== -->
-    <section id="sg" class="scr">
+    <!-- ============ 2. 判定結果画面 ============ -->
+    <section id="screen-result" class="screen">
       <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <span id="g-type-tag" class="btn btn-sec" style="padding:4px 14px; font-size:12px; cursor:default;">⚡ Achiever モード</span>
-          <span id="g-extra-info" style="font-size:13px; font-weight:600; color:var(--p);"></span>
+        <h2>あなたのゲーミフィケーションタイプ</h2>
+        <div id="result-badge" class="type-badge"></div>
+        <p id="result-rationale" class="lead"></p>
+
+        <div id="result-chart" class="bar-chart" role="img" aria-label="6タイプのスコア"></div>
+
+        <div class="button-row">
+          <button id="btn-goto-setup" class="btn btn-primary" style="width:100%; justify-content:center; padding:15px;">
+            タイピング練習の設定へ進む →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3. タイプ別ゲーム設定画面 ============ -->
+    <section id="screen-setup" class="screen">
+      <div class="card">
+        <h2 id="setup-title">練習設定</h2>
+
+        <div class="setup-row">
+          <h3>制限時間</h3>
+          <div class="chip-group" id="group-time"></div>
         </div>
 
-        <div class="stats-bar">
-          <div class="stat-item"><div class="stat-val" id="st-time">60</div><div class="stat-lbl">残り時間</div></div>
-          <div class="stat-item"><div class="stat-val" id="st-wpm">0</div><div class="stat-lbl">WPM</div></div>
-          <div class="stat-item"><div class="stat-val" id="st-acc">100%</div><div class="stat-lbl">正確率</div></div>
-          <div class="stat-item"><div class="stat-val" id="st-combo">0</div><div class="stat-lbl">COMBO</div></div>
+        <div class="setup-row">
+          <h3>文章の長さ</h3>
+          <div class="chip-group" id="group-difficulty"></div>
         </div>
 
-        <div class="typing-box">
-          <div class="kanji-text" id="t-kanji">タイピングを始めましょう</div>
-          <div class="reading-text" id="t-reading">たいぴんぐをはじめましょう</div>
-          <div class="romaji-box" id="t-romaji">
-            <span class="roma-ok" id="r-ok"></span><span class="roma-curr" id="r-curr"></span><span class="roma-rem" id="r-rem">taipingwohajimashou</span>
+        <div id="setup-type-specific"></div>
+
+        <div class="button-row">
+          <button id="btn-start-game" class="btn btn-primary" style="width:100%; justify-content:center; padding:15px; font-size:1.05rem;">
+            タイピング練習を開始する ▶
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4. タイピングゲーム画面 ============ -->
+    <section id="screen-game" class="screen">
+      <div class="card">
+        <div class="game-hud" id="game-hud"></div>
+
+        <div class="game-sentence" id="game-sentence">
+          <div class="game-kanji" id="game-kanji">---</div>
+          <div class="game-reading" id="game-reading">---</div>
+          <div class="game-romaji" id="game-romaji">
+            <span class="rj-done" id="rj-done"></span><span class="rj-current" id="rj-current"></span><span class="rj-pending" id="rj-pending"></span>
           </div>
         </div>
 
-        <div class="gauge-track"><div class="gauge-fill" id="g-gauge"></div></div>
+        <div id="game-side-panel" class="game-side-panel"></div>
+
+        <div class="button-row" style="justify-content:flex-end; margin-top:16px;">
+          <button id="btn-finish-early" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;">練習を終了して結果を見る</button>
+        </div>
       </div>
     </section>
 
-    <!-- ====== 4. リザルト画面 ====== -->
-    <section id="sres" class="scr">
-      <div class="card" style="text-align:center;">
-        <h2 style="font-size:28px; font-weight:900; margin-bottom:16px;">タイピング練習完了！</h2>
-        <div class="stats-bar" style="margin-bottom:24px;">
-          <div class="stat-item"><div class="stat-val" id="res-wpm">0</div><div class="stat-lbl">WPM (速度)</div></div>
-          <div class="stat-item"><div class="stat-val" id="res-acc">100%</div><div class="stat-lbl">正確率</div></div>
-          <div class="stat-item"><div class="stat-val" id="res-score">0</div><div class="stat-lbl">最終スコア</div></div>
+    <!-- ============ 5. リザルト画面 ============ -->
+    <section id="screen-postgame" class="screen">
+      <div class="card">
+        <h2>練習結果</h2>
+
+        <div class="stats-grid">
+          <div class="stat-tile"><div class="stat-value" id="pg-cpm">0</div><div class="stat-label">入力速度 (文字/分)</div></div>
+          <div class="stat-tile"><div class="stat-value" id="pg-accuracy">100%</div><div class="stat-label">正確率</div></div>
+          <div class="stat-tile"><div class="stat-value" id="pg-chars">0</div><div class="stat-label">正しい文字数</div></div>
+          <div class="stat-tile"><div class="stat-value" id="pg-misses">0</div><div class="stat-label">ミス回数</div></div>
         </div>
-        <button class="btn btn-p" onclick="restartAll()">もう一度診断・ゲームを行う</button>
+
+        <div id="postgame-type-specific" class="gamification-box"></div>
+
+        <div class="button-row">
+          <button id="btn-replay" class="btn btn-primary">もう一度練習する</button>
+          <button id="btn-re-survey" class="btn btn-secondary">もう一度診断からやり直す</button>
+        </div>
       </div>
     </section>
+
   </div>
 
   <script>
-  // ===== API CONFIG =====
-  const KEY = 'AQ.Ab8RN6JeBfxbm63abPYj4RN1Yw99n-Fjrw_icNE_cZKz1o_GGQ';
-  const APIURL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${KEY}`;
-  const SYS = `あなたはHEXADプレイヤータイプ診断専門家です。Achiever, Player, Free Spirit, Disruptorの4タイプに会話で分類し、4問後にJSON形式{"diagnosis_complete":true,"primary":"タイプ","secondary":"サブ","scores":{},"description":""}のみ出力してください。`;
+  'use strict';
 
-  const MOCK_QUESTIONS = [
-    { q: "こんにちは！普段ゲームや仕事でモチベーションが上がるのはどれですか？", c: ["1. 高難易度の目標を達成した時", "2. ランキング1位や報酬を得た時", "3. 誰も気づかない裏技を見つけた時", "4. ルールにとらわれず自由に動く時"] },
-    { q: "新しいタスクを始めるとき、真っ先にチェックすることは？", c: ["1. 全ての実績獲得条件", "2. スコアボードと報酬", "3. システムの隙やコマンド", "4. 自由な隠しエリア"] },
-    { q: "壁にぶつかった時の行動パターンは？", c: ["1. 何度も練習してスキルを磨く", "2. 効率的なアイテムや攻略を探す", "3. 変則アプローチを試す", "4. 別のルートで楽しむ"] },
-    { q: "最高のゲーム体験とは？", c: ["1. 自分の成長を実感した時", "2. ライバルに勝ち報酬を得た時", "3. 常識を覆した時", "4. 自由に探索できた時"] }
-  ];
+  /* ============================================================
+     データ & 定数
+     ============================================================ */
+  const HEXAD_TYPES = {
+    achiever:       { label: '達成者 (Achiever)',       color: '#2563eb', desc: '目標を達成し、スキルを磨いていくことに強い満足感を得るタイプ。' },
+    player:         { label: 'プレイヤー (Player)',      color: '#d97706', desc: 'ポイントや報酬など、外的な見返りにモチベーションを感じるタイプ。' },
+    socialiser:     { label: '社交家 (Socialiser)',      color: '#eda100', desc: '他者との交流や比較、つながりに価値を置くタイプ。' },
+    freeSpirit:     { label: '自由人 (Free Spirit)',     color: '#059669', desc: '自律性と自己表現、自分なりの探求を重視するタイプ。' },
+    philanthropist: { label: '利他主義者 (Philanthropist)', color: '#7c3aed', desc: '見返りを求めず、他者や全体への貢献に意義を感じるタイプ。' },
+    disruptor:      { label: '変革者 (Disruptor)',       color: '#dc2626', desc: '既存の仕組みに挑戦し、変化を起こすことを好むタイプ。' },
+  };
 
-  // ===== かなローマ字エンジン =====
-  const BASE_KANA = {'あ':['a'],'い':['i'],'う':['u'],'え':['e'],'お':['o'],'か':['ka'],'き':['ki'],'く':['ku'],'け':['ke'],'こ':['ko'],'が':['ga'],'ぎ':['gi'],'ぐ':['gu'],'げ':['ge'],'ご':['go'],'さ':['sa'],'し':['shi','si'],'す':['su'],'せ':['se'],'そ':['so'],'ざ':['za'],'じ':['ji','zi'],'ず':['zu'],'ぜ':['ze'],'ぞ':['zo'],'た':['ta'],'ち':['chi','ti'],'つ':['tsu','tu'],'て':['te'],'と':['to'],'だ':['da'],'ぢ':['ji','di'],'づ':['zu','du'],'で':['de'],'ど':['do'],'な':['na'],'に':['ni'],'ぬ':['nu'],'ね':['ne'],'の':['no'],'は':['ha'],'ひ':['hi'],'ふ':['fu','hu'],'へ':['he'],'ほ':['ho'],'ば':['ba'],'び':['bi'],'ぶ':['bu'],'べ':['be'],'ぼ':['bo'],'ぱ':['pa'],'ぴ':['pi'],'ぷ':['pu'],'ぺ':['pe'],'ぽ':['po'],'ま':['ma'],'み':['mi'],'む':['mu'],'め':['me'],'も':['mo'],'や':['ya'],'ゆ':['yu'],'よ':['yo'],'ら':['ra'],'り':['ri'],'る':['ru'],'れ':['re'],'ろ':['ro'],'わ':['wa'],'を':['wo','o'],'ん':['n','nn']};
-  const YOUON_KANA = {'きゃ':['kya'],'きゅ':['kyu'],'きょ':['kyo'],'しゃ':['sha','sya'],'しゅ':['shu','syu'],'しょ':['sho','syo'],'ちゃ':['cha','tya'],'ちゅ':['chu','tyu'],'ちょ':['cho','tyo']};
+  const CATEGORY_LABELS = { daily: '日常', nature: '自然', motivation: '名言・前向き', proverb: 'ことわざ' };
 
   const SENTENCES = [
-    { kanji: '努力は必ず報われる', reading: 'どりょくはかならずむくわれる' },
-    { kanji: '継続は力なり', reading: 'けいぞくはちからなり' },
-    { kanji: '新しい世界を探検しよう', reading: 'あたらしいせかいをたんけんしよう' },
-    { kanji: '自分だけの道を進もう', reading: 'じぶんだけのみちをすすもう' },
-    { kanji: '習うより慣れよ', reading: 'ならうよりなれよ' }
+    { kanji: '今日は良い天気です',           reading: 'きょうはよいてんきです',           category: 'daily' },
+    { kanji: 'お腹が空きました',             reading: 'おなかがすきました',               category: 'daily' },
+    { kanji: '学校に行きます',               reading: 'がっこうにいきます',               category: 'daily' },
+    { kanji: '友達と遊びました',             reading: 'ともだちとあそびました',           category: 'daily' },
+    { kanji: '美味しいご飯を食べる',         reading: 'おいしいごはんをたべる',           category: 'daily' },
+    { kanji: '空には星が輝いている',         reading: 'そらにはほしがかがやいている',     category: 'nature' },
+    { kanji: '川のせせらぎが心地よい',       reading: 'かわのせせらぎがここちよい',       category: 'nature' },
+    { kanji: '桜の花が風に舞う',             reading: 'さくらのはながかぜにまう',         category: 'nature' },
+    { kanji: '山の頂上から景色を見る',       reading: 'やまのちょうじょうからけしきをみる', category: 'nature' },
+    { kanji: '努力は必ず報われる',           reading: 'どりょくはかならずむくわれる',     category: 'motivation' },
+    { kanji: '諦めなければ夢は叶う',         reading: 'あきらめなければゆめはかなう',     category: 'motivation' },
+    { kanji: '毎日少しずつ成長しよう',       reading: 'まいにちすこしずつせいちょうしよう', category: 'motivation' },
+    { kanji: '笑う門には福来る',             reading: 'わらうかどにはふくきたる',         category: 'proverb' },
+    { kanji: '練習すればきっと上達する',     reading: 'れんしゅうすればきっとじょうたつする', category: 'motivation' },
+    { kanji: '急がば回れ',                   reading: 'いそがばまわれ',                   category: 'proverb' },
+    { kanji: '石の上にも三年',               reading: 'いしのうえにもさんねん',           category: 'proverb' },
+    { kanji: '七転び八起き',                 reading: 'ななころびやおき',                 category: 'proverb' },
+    { kanji: '新しい世界を探検しよう',       reading: 'あたらしいせかいをたんけんしよう', category: 'motivation' },
+    { kanji: '自分だけの道を進もう',         reading: 'じぶんだけのみちをすすもう',       category: 'motivation' },
+    { kanji: '継続は力なり',                 reading: 'けいぞくはちからなり',             category: 'motivation' },
   ];
 
-  let st = { result: null, hist: [], qc: 0, waiting: false, activeSentence: null, sentenceIdx: 0, currentMoraIdx: 0, currentInputStr: '', combo: 0, correctHits: 0, totalHits: 0, timeLeft: 60, timer: null };
+  const AVATAR_COLORS = ['#2563eb', '#d97706', '#eda100', '#059669', '#7c3aed', '#dc2626'];
 
-  function show(id) { document.querySelectorAll('.scr').forEach(s => s.classList.remove('on')); document.getElementById(id).classList.add('on'); }
+  const ACHIEVER_BADGES = [
+    { count: 1,  name: '見習いタイピスト' },
+    { count: 3,  name: '初級タイピスト' },
+    { count: 5,  name: '中級タイピスト' },
+    { count: 10, name: '上級タイピスト' },
+    { count: 20, name: 'マスタータイピスト' },
+  ];
 
-  // ===== GEMINI CALL WITH IMMEDIATE FAILOVER =====
+  const COIN_UNLOCKS = [
+    { coins: 0,    color: '#2563eb' },
+    { coins: 50,   color: '#d97706' },
+    { coins: 150,  color: '#059669' },
+    { coins: 300,  color: '#7c3aed' },
+  ];
+
+  const TIME_OPTIONS = [
+    { value: '30', label: '30秒' },
+    { value: '60', label: '60秒' },
+    { value: '120', label: '120秒' },
+    { value: 'none', label: 'タイマーなし' },
+  ];
+  const DIFFICULTY_OPTIONS = [
+    { value: 'random', label: 'おまかせ' },
+    { value: 'short', label: '短い文' },
+    { value: 'medium', label: '普通' },
+    { value: 'long', label: '長い文' },
+  ];
+
+  const STORAGE_KEYS = { stats: 'gtp_stats', nickname: 'gtp_nickname' };
+  const DEFAULT_STATS = {
+    sessionsCompleted: 0, totalCorrectChars: 0, coins: 0,
+    unlockedColors: ['#2563eb'], selectedColor: '#2563eb',
+    leaderboard: [], communityTotal: 0,
+    freeSpirit: { category: 'random' }, disruptor: { rule: 'chaos' },
+  };
+
+  /* ============================================================
+     かな → ローマ字 変換エンジン
+     ============================================================ */
+  const BASE_KANA = {
+    'あ':['a'],'い':['i'],'う':['u'],'え':['e'],'お':['o'],'か':['ka'],'き':['ki'],'く':['ku'],'け':['ke'],'こ':['ko'],
+    'が':['ga'],'ぎ':['gi'],'ぐ':['gu'],'げ':['ge'],'ご':['go'],'さ':['sa'],'し':['shi','si'],'す':['su'],'せ':['se'],'そ':['so'],
+    'ざ':['za'],'じ':['ji','zi'],'ず':['zu'],'ぜ':['ze'],'ぞ':['zo'],'た':['ta'],'ち':['chi','ti'],'つ':['tsu','tu'],'て':['te'],'と':['to'],
+    'だ':['da'],'ぢ':['ji','di'],'づ':['zu','du'],'で':['de'],'ど':['do'],'な':['na'],'に':['ni'],'ぬ':['nu'],'ね':['ne'],'の':['no'],
+    'は':['ha'],'ひ':['hi'],'ふ':['fu','hu'],'へ':['he'],'ほ':['ho'],'ば':['ba'],'び':['bi'],'ぶ':['bu'],'べ':['be'],'ぼ':['bo'],
+    'ぱ':['pa'],'ぴ':['pi'],'ぷ':['pu'],'ぺ':['pe'],'ぽ':['po'],'ま':['ma'],'み':['mi'],'む':['mu'],'め':['me'],'も':['mo'],
+    'や':['ya'],'ゆ':['yu'],'よ':['yo'],'ら':['ra'],'り':['ri'],'る':['ru'],'れ':['re'],'ろ':['ro'],'わ':['wa'],'を':['wo','o'],'ん':['n','nn']
+  };
+  const YOUON_KANA = {
+    'きゃ':['kya'],'きゅ':['kyu'],'きょ':['kyo'],'ぎゃ':['gya'],'ぎゅ':['gyu'],'ぎょ':['gyo'],
+    'しゃ':['sha','sya'],'しゅ':['shu','syu'],'しょ':['sho','syo'],'じゃ':['ja','zya'],'じゅ':['ju','zyu'],'じょ':['jo','zyo'],
+    'ちゃ':['cha','tya'],'ちゅ':['chu','tyu'],'ちょ':['cho','tyo'],'にゃ':['nya'],'にゅ':['nyu'],'にょ':['nyo'],
+    'ひゃ':['hya'],'ひゅ':['hyu'],'ひょ':['hyo'],'びゃ':['bya'],'びゅ':['byu'],'びょ':['byo'],
+    'ぴゃ':['pya'],'ぴゅ':['pyu'],'ぴょ':['pyo'],'みゃ':['mya'],'みゅ':['myu'],'みょ':['myo'],
+    'りゃ':['rya'],'りゅ':['ryu'],'りょ':['ryo']
+  };
+
+  function tokenizeReading(reading) {
+    const chars = Array.from(reading);
+    const tokens = []; let i = 0;
+    while (i < chars.length) {
+      const two = chars[i] + (chars[i + 1] || '');
+      if (YOUON_KANA[two]) { tokens.push(two); i += 2; continue; }
+      tokens.push(chars[i]); i += 1;
+    }
+    return tokens;
+  }
+
+  function buildMoraList(reading) {
+    const tokens = tokenizeReading(reading);
+    const moras = tokens.map((tok) => {
+      if (tok === 'っ') return { kana: tok, options: null, sokuon: true };
+      const options = YOUON_KANA[tok] || BASE_KANA[tok] || [tok];
+      return { kana: tok, options };
+    });
+    for (let i = 0; i < moras.length; i++) {
+      if (moras[i].sokuon) {
+        const next = moras[i + 1];
+        let letters = [];
+        if (next && next.options) {
+          letters = [...new Set(next.options.map((o) => o[0]).filter((ch) => !'aiueo'.includes(ch)))];
+        }
+        moras[i].options = letters.length ? letters : ['xtsu', 'ltsu'];
+        delete moras[i].sokuon;
+      }
+    }
+    return moras;
+  }
+
+  function moraCount(reading) { return buildMoraList(reading).length; }
+
+  /* ============================================================
+     状態管理
+     ============================================================ */
+  const appState = {
+    nickname: '',
+    hexadResult: null,
+    setup: { time: '60', difficulty: 'random', category: 'random', rule: 'chaos', avatarColor: '#2563eb' }
+  };
+
+  let game = null;
+
+  function $(sel) { return document.querySelector(sel); }
+  function $all(sel) { return Array.from(document.querySelectorAll(sel)); }
+  function showScreen(id) { $all('.screen').forEach(el => el.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+  function getStats() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.stats);
+      if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATS));
+      return Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATS)), JSON.parse(raw));
+    } catch (e) { return JSON.parse(JSON.stringify(DEFAULT_STATS)); }
+  }
+  function saveStats(stats) { localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats)); }
+
+  /* ============================================================
+     1. AI対話診断 (Gemini API + 4択 + 即時モックフォールバック)
+     ============================================================ */
+  const GEMINI_KEY = 'AQ.Ab8RN6JeBfxbm63abPYj4RN1Yw99n-Fjrw_icNE_cZKz1o_GGQ';
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+  const SYS_PROMPT = `あなたはHEXADプレイヤータイプ診断専門家です。achiever, player, socialiser, freeSpirit, philanthropist, disruptorの6タイプから分類します。4回の対話後に必ず以下のJSON形式のみで回答してください：
+{"primaryType":"achiever|player|socialiser|freeSpirit|philanthropist|disruptor","scores":{"achiever":80,"player":60,"socialiser":50,"freeSpirit":40,"philanthropist":30,"disruptor":20},"rationale":"日本語で1〜2文の解説"}`;
+
+  const MOCK_QUESTIONS = [
+    { q: "こんにちは！普段ゲームや仕事・学習でモチベーションが上がるシチュエーションはどれですか？", c: ["1. 高難易度の目標や課題をクリアした時", "2. スコア1位を取ったり報酬を得た時", "3. 誰も気づいていない独自の方法を見つけた時", "4. ルールにとらわれず自分のペースで動く時"] },
+    { q: "新しいタスクやゲームを始めるとき、真っ先にチェックすることは？", c: ["1. 全ての実績・獲得条件", "2. スコアボードとランキング", "3. システムの隙や隠しコマンド", "4. 自由に行動できる隠しエリア"] },
+    { q: "壁にぶつかった時の行動パターンは？", c: ["1. 何度も練習してスキルを磨く", "2. 最適な攻略情報やアイテムを探す", "3. 変則的アプローチを試す", "4. 別のルートで楽しむ"] },
+    { q: "あなたにとって最高の体験とは？", c: ["1. 自分の成長を実感できた時", "2. 他人に勝ち報酬を得た時", "3. 常識を覆した時", "4. 自由に創造・探求できた時"] }
+  ];
+
+  let chatHist = [];
+  let chatQc = 0;
+  let chatWaiting = false;
+
   async function callAI(hist) {
     try {
-      const res = await fetch(APIURL, {
+      const res = await fetch(GEMINI_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: SYS }] }, contents: hist.map(m => ({ role: m.r === 'ai' ? 'model' : 'user', parts: [{ text: m.t }] })) })
+        body: JSON.stringify({ system_instruction: { parts: [{ text: SYS_PROMPT }] }, contents: hist.map(m => ({ role: m.r === 'ai' ? 'model' : 'user', parts: [{ text: m.t }] })) })
       });
       if (!res.ok) throw new Error('LIMIT');
       const d = await res.json();
       return d.candidates[0].content.parts[0].text;
     } catch (e) {
-      console.warn('API fallback:', e);
-      return getMockResponse(st.qc);
+      console.warn('Gemini fallback to mock:', e);
+      return getMockResponse(chatQc);
     }
   }
 
   function getMockResponse(qc) {
     if (qc < MOCK_QUESTIONS.length) return MOCK_QUESTIONS[qc].q;
-    const p = ['Achiever', 'Player', 'Free Spirit', 'Disruptor'][Math.floor(Math.random() * 4)];
-    return JSON.stringify({ diagnosis_complete: true, primary: p, secondary: 'Player', scores: { Achiever: 90 }, description: `${p}タイプです！個性を生かしてタイピングを楽しみましょう。` });
+    const types = ['achiever', 'player', 'freeSpirit', 'disruptor', 'socialiser', 'philanthropist'];
+    const p = types[Math.floor(Math.random() * types.length)];
+    const sc = { achiever: 40, player: 40, socialiser: 40, freeSpirit: 40, philanthropist: 40, disruptor: 40 };
+    sc[p] = 95;
+    return JSON.stringify({ primaryType: p, scores: sc, rationale: `${HEXAD_TYPES[p].label}タイプです！個性を活かしてタイピングを楽しみましょう。` });
   }
 
-  // ===== CHAT UI =====
-  function addMsg(r, t) {
-    const m = document.getElementById('msgs');
+  function addMsg(r, text) {
+    const msgs = $('#msgs');
     const el = document.createElement('div');
     el.className = `msg ${r}`;
-    el.innerHTML = `<div class="bubble">${t.replace(/\n/g, '<br>')}</div>`;
-    m.appendChild(el); m.scrollTop = m.scrollHeight;
-    st.hist.push({ r, t });
+    el.innerHTML = `<div class="bubble">${text.replace(/\n/g, '<br>')}</div>`;
+    msgs.appendChild(el); msgs.scrollTop = msgs.scrollHeight;
+    chatHist.push({ r, t: text });
   }
 
-  function renderChoices(c) {
-    const el = document.getElementById('choices');
-    if (!c || !c.length) { el.innerHTML = ''; return; }
-    el.innerHTML = c.map(txt => `<button class="c-choice" onclick="selectChoice('${txt}')">${txt}</button>`).join('');
+  function renderChoices(choices) {
+    const container = $('#choices');
+    if (!choices || choices.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = choices.map(txt => `<button class="c-choice" onclick="selectChoice('${txt.replace(/'/g, "\\'")}')">${txt}</button>`).join('');
   }
 
-  function selectChoice(txt) { document.getElementById('cinp').value = txt; renderChoices([]); send(); }
+  function selectChoice(txt) { $('#cinp').value = txt; renderChoices([]); sendMsg(); }
 
   async function startChat() {
-    show('sc'); st.qc = 0;
-    const r = await callAI([{ r: 'user', t: '診断をお願いします。' }]);
+    chatHist = []; chatQc = 0; chatWaiting = false;
+    $('#msgs').innerHTML = '';
+    showScreen('screen-chat');
+    const r = await callAI([{ r: 'user', t: '診断を開始してください。' }]);
     if (parseDiag(r)) return;
     addMsg('ai', r);
     renderChoices(MOCK_QUESTIONS[0].c);
-    document.getElementById('cinp').disabled = false;
+    $('#cinp').disabled = false; $('#sbtn').disabled = false;
   }
 
-  async function send() {
-    const inp = document.getElementById('cinp');
-    const t = inp.value.trim(); if (!t || st.waiting) return;
+  async function sendMsg() {
+    const inp = $('#cinp');
+    const t = inp.value.trim(); if (!t || chatWaiting) return;
     inp.value = ''; addMsg('user', t);
-    st.qc++; document.getElementById('prog').textContent = `Q ${Math.min(st.qc, 4)} / 4`;
-    st.waiting = true; renderChoices([]);
-    const r = await callAI(st.hist);
-    st.waiting = false;
+    chatQc++; $('#chat-prog').textContent = `Q ${Math.min(chatQc, 4)} / 4`;
+    chatWaiting = true; renderChoices([]);
+    const r = await callAI(chatHist);
+    chatWaiting = false;
     if (parseDiag(r)) return;
     addMsg('ai', r);
-    if (MOCK_QUESTIONS[st.qc]) renderChoices(MOCK_QUESTIONS[st.qc].c);
+    if (MOCK_QUESTIONS[chatQc]) renderChoices(MOCK_QUESTIONS[chatQc].c);
   }
 
+  function onKey(e) { if (e.key === 'Enter') sendMsg(); }
+
   function parseDiag(text) {
-    const m = text.match(/\{[\s\S]*"diagnosis_complete"[\s\S]*\}/);
+    const m = text.match(/\{[\s\S]*"primaryType"[\s\S]*\}/);
     if (!m) return false;
     try {
       const d = JSON.parse(m[0]);
-      if (d.diagnosis_complete) {
-        st.result = d;
-        document.body.className = `th-${d.primary.toLowerCase().replace(' ', '')}`;
-        document.getElementById('rtype').textContent = d.primary;
-        document.getElementById('rsub').textContent = `サブタイプ: ${d.secondary}`;
-        document.getElementById('rdesc').textContent = d.description;
-        show('sr');
+      if (d.primaryType) {
+        appState.hexadResult = d;
+        renderResult(d);
         return true;
       }
     } catch(e){}
     return false;
   }
 
-  function onKey(e) { if (e.key === 'Enter') send(); }
+  function renderResult(res) {
+    const info = HEXAD_TYPES[res.primaryType] || HEXAD_TYPES.achiever;
+    const badge = $('#result-badge');
+    badge.textContent = info.label;
+    badge.style.background = info.color;
+    $('#result-rationale').textContent = res.rationale || info.desc;
 
-  // ===== TYPING ENGINE =====
-  function startGameSetup() {
-    show('sg');
-    document.getElementById('g-type-tag').textContent = `⚡ ${st.result.primary} モード`;
-    st.sentenceIdx = 0; st.combo = 0; st.correctHits = 0; st.totalHits = 0; st.timeLeft = 60;
-    nextSentence();
-    window.addEventListener('keydown', handleTypingKey);
-    st.timer = setInterval(() => {
-      st.timeLeft--;
-      document.getElementById('st-time').textContent = st.timeLeft;
-      if (st.timeLeft <= 0) endGame();
-    }, 1000);
+    const chart = $('#result-chart');
+    const max = Math.max(...Object.values(res.scores || { a: 1 }));
+    chart.innerHTML = Object.entries(HEXAD_TYPES).map(([typeKey, tInfo]) => {
+      const val = (res.scores && res.scores[typeKey]) ? res.scores[typeKey] : 0;
+      const pct = max > 0 ? Math.round((val / max) * 100) : 0;
+      return `
+        <div class="bar-row">
+          <span class="bar-label">${tInfo.label.split(' ')[0]}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${tInfo.color}"></div></div>
+          <span class="bar-value">${val}</span>
+        </div>
+      `;
+    }).join('');
+
+    showScreen('screen-result');
   }
 
-  function nextSentence() {
-    st.activeSentence = SENTENCES[st.sentenceIdx % SENTENCES.length];
-    st.sentenceIdx++;
-    document.getElementById('t-kanji').textContent = st.activeSentence.kanji;
-    document.getElementById('t-reading').textContent = st.activeSentence.reading;
-    st.currentMoraIdx = 0;
-    st.currentInputStr = '';
-    updateRomajiDisplay();
+  /* ============================================================
+     2. ゲーム設定 & UI
+     ============================================================ */
+  function chipGroup(name, options, selectedValue) {
+    return `<div class="chip-group" data-name="${name}">` +
+      options.map(opt => `<button type="button" class="chip${opt.value === selectedValue ? ' selected' : ''}" data-value="${opt.value}">${opt.label}</button>`).join('') +
+      `</div>`;
+  }
+  function bindChipGroup(container, name, color, onSelect) {
+    const group = container.querySelector(`.chip-group[data-name="${name}"]`);
+    if (!group) return;
+    group.querySelectorAll('.chip').forEach(chip => {
+      if (chip.classList.contains('selected')) chip.style.background = color;
+      chip.addEventListener('click', () => {
+        group.querySelectorAll('.chip').forEach(c => { c.classList.remove('selected'); c.style.background = ''; });
+        chip.classList.add('selected'); chip.style.background = color;
+        onSelect(chip.dataset.value);
+      });
+    });
   }
 
-  function updateRomajiDisplay() {
-    document.getElementById('r-ok').textContent = st.currentInputStr;
-    document.getElementById('r-curr').textContent = '';
-    document.getElementById('r-rem').textContent = '...';
+  function renderSetupScreen() {
+    const res = appState.hexadResult;
+    const typeKey = res.primaryType;
+    const info = HEXAD_TYPES[typeKey] || HEXAD_TYPES.achiever;
+    const stats = getStats();
+
+    $('#setup-title').textContent = `${info.label} 用の設定`;
+    $('#group-time').innerHTML = chipGroup('time', TIME_OPTIONS, appState.setup.time).replace(/<div[^>]*>/, '').replace(/<\/div>/, '');
+    $('#group-difficulty').innerHTML = chipGroup('difficulty', DIFFICULTY_OPTIONS, appState.setup.difficulty).replace(/<div[^>]*>/, '').replace(/<\/div>/, '');
+
+    bindChipGroup($('#screen-setup'), 'time', info.color, v => appState.setup.time = v);
+    bindChipGroup($('#screen-setup'), 'difficulty', info.color, v => appState.setup.difficulty = v);
+
+    const typeBody = $('#setup-type-specific');
+    if (typeKey === 'achiever') {
+      const badge = ACHIEVER_BADGES.filter(b => stats.sessionsCompleted >= b.count).pop();
+      typeBody.innerHTML = `<div class="setup-row"><h3>現在の称号</h3><p><strong>${badge ? badge.name : '見習いタイピスト'}</strong></p></div>`;
+    } else if (typeKey === 'player') {
+      typeBody.innerHTML = `<div class="setup-row"><h3>所持コイン</h3><p style="font-size:1.3rem; font-weight:700;">🪙 ${stats.coins}</p></div>`;
+    } else if (typeKey === 'freeSpirit') {
+      typeBody.innerHTML = `<div class="setup-row"><h3>テーマ選択</h3>${chipGroup('category', [{ value: 'random', label: 'おまかせ' }, ...Object.entries(CATEGORY_LABELS).map(([v, l]) => ({ value: v, label: l }))], stats.freeSpirit.category)}</div>`;
+      bindChipGroup(typeBody, 'category', info.color, v => appState.setup.category = v);
+    } else if (typeKey === 'disruptor') {
+      typeBody.innerHTML = `<div class="setup-row"><h3>カスタムルール</h3>${chipGroup('rule', [{ value: 'speed', label: '速さ優先' }, { value: 'accuracy', label: '正確さ優先' }, { value: 'chaos', label: 'カオス' }], stats.disruptor.rule)}</div>`;
+      bindChipGroup(typeBody, 'rule', info.color, v => appState.setup.rule = v);
+    } else {
+      typeBody.innerHTML = '';
+    }
+
+    showScreen('screen-setup');
   }
 
-  function handleTypingKey(e) {
-    if (e.key.length !== 1) return;
-    st.totalHits++;
-    st.correctHits++;
-    st.combo++;
-    st.currentInputStr += e.key.toLowerCase();
-    document.getElementById('r-ok').textContent = st.currentInputStr;
-    document.getElementById('st-combo').textContent = st.combo;
-    document.getElementById('st-wpm').textContent = Math.round((st.correctHits / 5) / ((60 - st.timeLeft) / 60 || 1));
-    document.getElementById('st-acc').textContent = Math.round((st.correctHits / st.totalHits) * 100) + '%';
-    
-    if (st.currentInputStr.length >= 10) {
-      nextSentence();
+  /* ============================================================
+     3. タイピングゲーム本体
+     ============================================================ */
+  class TypingSession {
+    constructor(typeKey, setup, nickname) {
+      this.typeKey = typeKey;
+      this.setup = setup;
+      this.nickname = nickname;
+
+      let pool = SENTENCES;
+      if (setup.category && setup.category !== 'random') pool = pool.filter(s => s.category === setup.category);
+      this.pool = pool.length ? pool : SENTENCES;
+      this.sentenceQueue = [];
+
+      this.currentSentence = null;
+      this.moras = [];
+      this.moraIndex = 0;
+      this.matchedOptions = [];
+      this.typedPrefix = '';
+
+      this.correctCount = 0;
+      this.missCount = 0;
+      this.sentenceCompleted = 0;
+
+      this.startTime = null;
+      this.endTime = null;
+      this.timerId = null;
+
+      this.boundKeydown = this.onKeydown.bind(this);
+    }
+
+    start() {
+      this.startTime = Date.now();
+      window.addEventListener('keydown', this.boundKeydown);
+      this.nextSentence();
+
+      if (this.setup.time && this.setup.time !== 'none') {
+        const sec = parseInt(this.setup.time, 10);
+        this.timerId = setTimeout(() => this.finish(), sec * 1000);
+      }
+      this.renderHud();
+    }
+
+    finish() {
+      if (this.endTime) return;
+      this.endTime = Date.now();
+      if (this.timerId) clearTimeout(this.timerId);
+      window.removeEventListener('keydown', this.boundKeydown);
+
+      const elapsedSec = (this.endTime - this.startTime) / 1000;
+      const totalChars = this.correctCount;
+      const cpm = elapsedSec > 0 ? Math.round((totalChars / elapsedSec) * 60) : 0;
+      const accuracy = (totalChars + this.missCount) > 0 ? Math.round((totalChars / (totalChars + this.missCount)) * 100) : 100;
+
+      const stats = getStats();
+      stats.sessionsCompleted += 1;
+      stats.totalCorrectChars += totalChars;
+      stats.coins += Math.floor(totalChars / 5);
+      saveStats(stats);
+
+      renderPostGame({ cpm, accuracy, totalChars, missCount: this.missCount, elapsedSec });
+    }
+
+    nextSentence() {
+      if (this.sentenceQueue.length === 0) {
+        this.sentenceQueue = this.pool.slice().sort(() => Math.random() - 0.5);
+      }
+      this.currentSentence = this.sentenceQueue.pop();
+      this.moras = buildMoraList(this.currentSentence.reading);
+      this.moraIndex = 0;
+      this.matchedOptions = [];
+      this.typedPrefix = '';
+
+      $('#game-kanji').textContent = this.currentSentence.kanji;
+      $('#game-reading').textContent = this.currentSentence.reading;
+      this.renderRomaji();
+    }
+
+    renderRomaji() {
+      const doneText = this.moras.slice(0, this.moraIndex).map(m => m.options[0]).join('') + this.typedPrefix;
+      const currMora = this.moras[this.moraIndex];
+      let currText = '';
+      let pendingText = '';
+
+      if (currMora) {
+        const bestOpt = (this.matchedOptions.length ? this.matchedOptions : currMora.options)[0];
+        currText = bestOpt.slice(this.typedPrefix.length, this.typedPrefix.length + 1);
+        pendingText = bestOpt.slice(this.typedPrefix.length + 1) + this.moras.slice(this.moraIndex + 1).map(m => m.options[0]).join('');
+      }
+
+      $('#rj-done').textContent = doneText;
+      $('#rj-current').textContent = currText;
+      $('#rj-pending').textContent = pendingText;
+    }
+
+    onKeydown(e) {
+      if (e.key.length !== 1 || e.ctrlKey || e.altKey || e.metaKey) return;
+      const key = e.key.toLowerCase();
+      const currMora = this.moras[this.moraIndex];
+      if (!currMora) return;
+
+      const validOpts = this.matchedOptions.length ? this.matchedOptions : currMora.options;
+      const candidateOpts = validOpts.filter(opt => opt.startsWith(this.typedPrefix + key));
+
+      if (candidateOpts.length > 0) {
+        this.correctCount++;
+        this.typedPrefix += key;
+        this.matchedOptions = candidateOpts;
+
+        if (candidateOpts.some(opt => opt === this.typedPrefix)) {
+          this.moraIndex++;
+          this.typedPrefix = '';
+          this.matchedOptions = [];
+        }
+
+        if (this.moraIndex >= this.moras.length) {
+          this.sentenceCompleted++;
+          this.nextSentence();
+        } else {
+          this.renderRomaji();
+        }
+      } else {
+        this.missCount++;
+        $('#game-romaji').classList.remove('mistake-flash');
+        void $('#game-romaji').offsetWidth;
+        $('#game-romaji').classList.add('mistake-flash');
+      }
+      this.renderHud();
+    }
+
+    renderHud() {
+      const elapsedSec = this.startTime ? Math.max(1, (Date.now() - this.startTime) / 1000) : 1;
+      const cpm = Math.round((this.correctCount / elapsedSec) * 60);
+      const acc = (this.correctCount + this.missCount) > 0 ? Math.round((this.correctCount / (this.correctCount + this.missCount)) * 100) : 100;
+      
+      let timeText = 'なし';
+      if (this.setup.time && this.setup.time !== 'none') {
+        const sec = parseInt(this.setup.time, 10);
+        timeText = `${Math.max(0, Math.ceil(sec - elapsedSec))}秒`;
+      }
+
+      $('#game-hud').innerHTML = `
+        <div class="hud-item">残り時間<strong>${timeText}</strong></div>
+        <div class="hud-item">入力速度<strong>${cpm} <span style="font-size:0.75rem">CPM</span></strong></div>
+        <div class="hud-item">正確率<strong>${acc}%</strong></div>
+        <div class="hud-item">クリア文数<strong>${this.sentenceCompleted}</strong></div>
+      `;
     }
   }
 
-  function endGame() {
-    clearInterval(st.timer);
-    window.removeEventListener('keydown', handleTypingKey);
-    document.getElementById('res-wpm').textContent = document.getElementById('st-wpm').textContent;
-    document.getElementById('res-acc').textContent = document.getElementById('st-acc').textContent;
-    document.getElementById('res-score').textContent = st.correctHits * 10;
-    show('sres');
+  function renderPostGame(res) {
+    showScreen('screen-postgame');
+    $('#pg-cpm').textContent = res.cpm;
+    $('#pg-accuracy').textContent = `${res.accuracy}%`;
+    $('#pg-chars').textContent = res.totalChars;
+    $('#pg-misses').textContent = res.missCount;
+
+    const info = HEXAD_TYPES[appState.hexadResult.primaryType] || HEXAD_TYPES.achiever;
+    $('#postgame-type-specific').innerHTML = `
+      <h3>${info.label} のタイピング結果</h3>
+      <p>素晴らしい集中力でした！練習成果がしっかり蓄積されています。</p>
+    `;
   }
 
-  function restartAll() { startChat(); }
+  /* ============================================================
+     イベント連携
+     ============================================================ */
+  $('#btn-start-ai').addEventListener('click', () => {
+    appState.nickname = $('#input-nickname').value.trim() || 'ゲスト';
+    startChat();
+  });
 
-  // START
-  startChat();
+  $('#btn-goto-setup').addEventListener('click', () => {
+    renderSetupScreen();
+  });
+
+  $('#btn-start-game').addEventListener('click', () => {
+    showScreen('screen-game');
+    game = new TypingSession(appState.hexadResult.primaryType, appState.setup, appState.nickname);
+    game.start();
+  });
+
+  $('#btn-finish-early').addEventListener('click', () => {
+    if (game) game.finish();
+  });
+
+  $('#btn-replay').addEventListener('click', () => {
+    renderSetupScreen();
+  });
+
+  $('#btn-re-survey').addEventListener('click', () => {
+    startChat();
+  });
+
   </script>
 </body>
 </html>
